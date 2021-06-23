@@ -45,8 +45,6 @@ void binomial_broadcast(int *value) {
                 source_rank, MPI_ANY_TAG, MPI_COMM_WORLD, 0);
     }
 
-    attach_debugger(8);
-
     for (int i = last_node - 1; i >= 0; i--) {
         int target_rank = c_rank | (1 << i);
 

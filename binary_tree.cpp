@@ -30,6 +30,7 @@ public:
 
         begin = std::accumulate(n_summands.begin(), n_summands.begin() + rank, 0);
         end = begin + size;
+        globalSize =  std::accumulate(n_summands.begin(), n_summands.end(), 0);
 
         cout << "Begin: " << begin << ", end: " << end << endl;
     }
@@ -67,7 +68,7 @@ public:
             int zero_position = j - 1;
             uint64_t child_index = i | (1 << zero_position);
 
-            if (child_index < size)
+            if (child_index < globalSize)
                 result.push_back(child_index);
         }
 
@@ -84,8 +85,8 @@ public:
 
         for (uint64_t sourceRank = 0; sourceRank < n_ranks; sourceRank++) {
             if (rankLocalIndex < n_summands[sourceRank]) {
-                cout << "Idx " << index << " is on rank " << sourceRank
-                     << " with local idx " << rankLocalIndex << endl;
+                //cout << "Idx " << index << " is on rank " << sourceRank
+                //     << " with local idx " << rankLocalIndex << endl;
 
                 return sourceRank;
             }
@@ -99,13 +100,15 @@ public:
 
     double acquireNumber(uint64_t index) {
         if (isLocal(index)) {
-            cout << "Number is local" << endl;
+            //cout << "Number is local" << endl;
             // We have that number locally
             return summands[index - begin];
         }
 
         uint64_t sourceRank = rankFromIndex(index);
         double result;
+        cout << "Receiving from " << sourceRank
+            << " with tag " << index << " data " << result << endl;
         MPI::COMM_WORLD.Recv(&result, 1, MPI_DOUBLE,
                 sourceRank, index);
 
@@ -123,7 +126,6 @@ public:
         for (uint64_t index = startIndex; index < end; index++) {
             if (!isLocal(parent(index))) {
                 result.push_back(index);
-                cout << "Rank intersecting summand" << endl;
             }
         }
 
@@ -138,7 +140,9 @@ public:
             double result = accumulate(summand);
             // TODO: Send out summand
             MPI::COMM_WORLD.Send(&result, 1, MPI_DOUBLE,
-                    rankFromIndex(summand), summand);
+                    rankFromIndex(parent(summand)), summand);
+            cout << "Sending to " << rankFromIndex(parent(summand))
+                << " with tag " << summand << " data " << result << endl;
                     
         }
 
@@ -151,22 +155,27 @@ public:
 
 protected:
     double accumulate(uint64_t index) {
-        cout << "accumulate(" << index << ") = ";
+        cout << "accumulate(" << index << ")" << endl;
         double accumulator = acquireNumber(index);
-        cout << accumulator << " ";
+
+        if (!isLocal(index)) {
+            cout << endl;
+            return accumulator;
+
+        }
 
         for (auto child : children(index)) {
-            double num = acquireNumber(child);
+            cout << "\taccumulate(" << child << ")" << endl;
+            double num = accumulate(child);
             cout << "+ " << num << " ";
-            accumulator += acquireNumber(child);
+            accumulator += num;
         }
-        cout << endl;
 
         return accumulator;
     }
 
 private:
-    uint64_t size, rank, n_ranks, begin, end;
+    uint64_t size, globalSize, rank, n_ranks, begin, end;
     vector<uint64_t> n_summands;
     vector<double> summands;
 };
@@ -200,7 +209,12 @@ int main(int argc, char **argv) {
     DistributedBinaryTree tree(c_rank, summands_per_rank);
     tree.read_from_array(&summands[0]);
 
-    double result = tree.accumulate();
+    double result;
+    result = tree.accumulate();
+    for (auto child : tree.children(0)) {
+        cout << child << " ";
+    }
+    cout << endl;
 
     if (c_rank == 0) {
         cout << "Sum: " << result << endl;

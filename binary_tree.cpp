@@ -7,6 +7,7 @@
 #include <cassert>
 #include <cmath>
 #include <unistd.h>
+#include "io.hpp"
 
 using namespace std;
 using namespace std::string_literals;
@@ -32,7 +33,7 @@ public:
         end = begin + size;
         globalSize =  std::accumulate(n_summands.begin(), n_summands.end(), 0);
 
-        cout << "Begin: " << begin << ", end: " << end << endl;
+        //cout << "Begin: " << begin << ", end: " << end << endl;
     }
 
 
@@ -107,8 +108,8 @@ public:
 
         uint64_t sourceRank = rankFromIndex(index);
         double result;
-        cout << "Receiving from " << sourceRank
-            << " with tag " << index << " data " << result << endl;
+        //cout << "Receiving from " << sourceRank
+        //    << " with tag " << index << " data " << result << endl;
         MPI::COMM_WORLD.Recv(&result, 1, MPI_DOUBLE,
                 sourceRank, index);
 
@@ -136,13 +137,13 @@ public:
      */
     double accumulate(void) {
         for (auto summand : rankIntersectingSummands()) {
-            cout << "Rank intersecting summand = " << summand << endl;
+            //cout << "Rank intersecting summand = " << summand << endl;
             double result = accumulate(summand);
             // TODO: Send out summand
             MPI::COMM_WORLD.Send(&result, 1, MPI_DOUBLE,
                     rankFromIndex(parent(summand)), summand);
-            cout << "Sending to " << rankFromIndex(parent(summand))
-                << " with tag " << summand << " data " << result << endl;
+            //cout << "Sending to " << rankFromIndex(parent(summand))
+            //    << " with tag " << summand << " data " << result << endl;
                     
         }
 
@@ -155,19 +156,19 @@ public:
 
 protected:
     double accumulate(uint64_t index) {
-        cout << "accumulate(" << index << ")" << endl;
+        //cout << "accumulate(" << index << ")" << endl;
         double accumulator = acquireNumber(index);
 
         if (!isLocal(index)) {
-            cout << endl;
+            //cout << endl;
             return accumulator;
 
         }
 
         for (auto child : children(index)) {
-            cout << "\taccumulate(" << child << ")" << endl;
+            //cout << "\taccumulate(" << child << ")" << endl;
             double num = accumulate(child);
-            cout << "+ " << num << " ";
+            //cout << "+ " << num << " ";
             accumulator += num;
         }
 
@@ -181,13 +182,20 @@ private:
 };
 
 int main(int argc, char **argv) {
+
+    if (argc < 2 || argc > 3) {
+        cerr << "Usage: " << argv[0] << " <psllh> [--serial]" << endl;
+        return -1;
+    }
+
+
     MPI::Init(argc, argv);
 
 
     uint64_t c_rank = MPI::COMM_WORLD.Get_rank();
     uint64_t c_size = MPI::COMM_WORLD.Get_size();
 
-    vector<double> summands = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
+    vector<double> summands = IO::read_psllh(argv[1]);
     assert(c_size < summands.size());
     uint64_t n_summands_per_rank = floor(summands.size() / c_size);
     uint64_t remaining = summands.size() - n_summands_per_rank * c_size;
@@ -196,28 +204,24 @@ int main(int argc, char **argv) {
     for (uint64_t i = 0; i < c_size; i++) {
         summands_per_rank.push_back(n_summands_per_rank);
     }
-    summands_per_rank.back() += remaining;
+    summands_per_rank[0] += remaining;
 
 
-    for (auto x : summands_per_rank) {
-        cout << x << " ";
-    }
-    cout << endl;
+    if (argc == 3 && (0 == strcmp(argv[2], "--serial"))) {
+        if (c_rank == 0) {
+            cout << "Serial Sum: " << std::accumulate(summands.begin(),
+                    summands.end(), 0.0) << endl;
+        }
+    } else {
+        DistributedBinaryTree tree(c_rank, summands_per_rank);
+        tree.read_from_array(&summands[0]);
 
+        double result;
+        result = tree.accumulate();
 
-    //attach_debugger(1 == c_rank);
-    DistributedBinaryTree tree(c_rank, summands_per_rank);
-    tree.read_from_array(&summands[0]);
-
-    double result;
-    result = tree.accumulate();
-    for (auto child : tree.children(0)) {
-        cout << child << " ";
-    }
-    cout << endl;
-
-    if (c_rank == 0) {
-        cout << "Sum: " << result << endl;
+        if (c_rank == 0) {
+            cout << "Distributed Sum: " << result << endl;
+        }
     }
 
 

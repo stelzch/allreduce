@@ -111,8 +111,8 @@ public:
         double result;
         //cout << "Receiving from " << sourceRank
         //    << " with tag " << index << " data " << result << endl;
-        MPI::COMM_WORLD.Recv(&result, 1, MPI_DOUBLE,
-                sourceRank, index);
+        MPI_Recv(&result, 1, MPI_DOUBLE,
+                sourceRank, index, MPI_COMM_WORLD, NULL);
 
         return result;
     }
@@ -141,8 +141,8 @@ public:
             //cout << "Rank intersecting summand = " << summand << endl;
             double result = accumulate(summand);
             // TODO: Send out summand
-            MPI::COMM_WORLD.Send(&result, 1, MPI_DOUBLE,
-                    rankFromIndex(parent(summand)), summand);
+            MPI_Send(&result, 1, MPI_DOUBLE,
+                    rankFromIndex(parent(summand)), summand, MPI_COMM_WORLD);
             //cout << "Sending to " << rankFromIndex(parent(summand))
             //    << " with tag " << summand << " data " << result << endl;
                     
@@ -202,11 +202,12 @@ int main(int argc, char **argv) {
     }
 
 
-    MPI::Init(argc, argv);
+    MPI_Init(&argc, &argv);
 
 
-    uint64_t c_rank = MPI::COMM_WORLD.Get_rank();
-    uint64_t c_size = MPI::COMM_WORLD.Get_size();
+    int c_rank, c_size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &c_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &c_size);
 
     vector<double> summands = IO::read_psllh(argv[1]);
     assert(c_size < summands.size());
@@ -238,7 +239,7 @@ int main(int argc, char **argv) {
     }
 
 
-    MPI::Finalize();
+    MPI_Finalize();
 
     return 0;
 }

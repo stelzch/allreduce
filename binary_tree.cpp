@@ -7,6 +7,7 @@
 #include <cassert>
 #include <cmath>
 #include <unistd.h>
+#include <functional>
 #include "io.hpp"
 
 using namespace std;
@@ -165,11 +166,22 @@ protected:
 
         }
 
-        for (auto child : children(index)) {
-            //cout << "\taccumulate(" << child << ")" << endl;
-            double num = accumulate(child);
-            //cout << "+ " << num << " ";
-            accumulator += num;
+        int lsb_index = ffs(index);
+        if (lsb_index == 0) {
+            // If no bits are set, iterate over all zeros
+            lsb_index = 31;
+        }
+
+        // Iterate over all variants where one of the least significant zeros
+        // has been replaced with a one.
+        for (int j = 1; j < lsb_index; j++) {
+            int zero_position = j - 1;
+            uint64_t child_index = index | (1 << zero_position);
+
+            if (child_index < globalSize) {
+                double num = accumulate(child_index);
+                accumulator += num;
+            }
         }
 
         return accumulator;
@@ -179,6 +191,7 @@ private:
     uint64_t size, globalSize, rank, n_ranks, begin, end;
     vector<uint64_t> n_summands;
     vector<double> summands;
+
 };
 
 int main(int argc, char **argv) {
@@ -229,7 +242,3 @@ int main(int argc, char **argv) {
 
     return 0;
 }
-
-/**
- * TODO: Fix the accumulate method. It likely needs to be made recursive
- */

@@ -155,6 +155,27 @@ public:
         }
     }
 
+    double allreduce(void) {
+        for (const auto x : n_summands) {
+            // MPI Allreduce only works with uniform summand count
+            assert(x == n_summands[0]);
+        }
+
+        const size_t size = n_summands[0];
+
+        vector<double> reduced_sums(size);
+        MPI_Allreduce(&summands[0], &reduced_sums[0], size,
+                MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+        //attach_debugger(0 == rank);
+
+        // Calculate sum of accumulated values
+        auto sum = std::accumulate(reduced_sums.begin(),
+                reduced_sums.end(), 0);
+
+        return sum;
+    }
+
 protected:
     double accumulate(uint64_t index) {
         //cout << "accumulate(" << index << ")" << endl;
@@ -218,13 +239,20 @@ int main(int argc, char **argv) {
     for (uint64_t i = 0; i < c_size; i++) {
         summands_per_rank.push_back(n_summands_per_rank);
     }
-    summands_per_rank[0] += remaining;
+    //summands_per_rank[0] += remaining;
 
 
     if (argc == 3 && (0 == strcmp(argv[2], "--serial"))) {
         if (c_rank == 0) {
             cout << "Serial Sum: " << std::accumulate(summands.begin(),
                     summands.end(), 0.0) << endl;
+        }
+    } else if (argc == 3 && (0 == strcmp(argv[2], "--mpi"))) {
+        DistributedBinaryTree tree(c_rank, summands_per_rank);
+        tree.read_from_array(&summands[0]);
+        auto sum = tree.allreduce();
+        if (1 || c_rank == 0) {
+            cout << "MPI_Allreduce Sum: " << sum << endl;
         }
     } else {
         DistributedBinaryTree tree(c_rank, summands_per_rank);

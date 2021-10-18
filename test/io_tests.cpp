@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <string>
 #include <iostream>
+#include <cmath>
 #include "io.hpp"
 
 using std::string;
@@ -28,15 +29,36 @@ TEST(IOTests, PsllhLoading) {
 TEST(IOTests, BinPsllhComparison) {
     auto text_variant = IO::read_psllh(get_file_path("fusob.psllh"));
     auto binary_variant = IO::read_binpsllh(get_file_path("fusob.binpsllh"));
-
     EXPECT_EQ(text_variant.size(), binary_variant.size());
     
+    double difference = 0;
+    double maxdiff = 0;
     for (size_t i = 0; i < text_variant.size(); i++) {
-        // The numbers stored as text have 6 decimals, thus we expect the error
-        // to be less than 1e-6
         EXPECT_NEAR(text_variant[i], binary_variant[i],
-                1e-4);
-        break;
+                1);
+        difference += abs(text_variant[i] - binary_variant[i]);
+        maxdiff = fmax(maxdiff, abs(text_variant[i] - binary_variant[i]));
     }
-    
+
+    std::cout << "Average difference: " << difference / text_variant.size() << "\n";
+    std::cout << "Max diff: " << maxdiff << "\n";
+}
+
+TEST(IOTests, Prim) {
+    auto text_variant = IO::read_psllh("/home/christoph/Studium/Thesis/warmups/data/prim.psllh");
+    auto binary_variant = IO::read_binpsllh("/home/christoph/Studium/Thesis/warmups/data/prim.binpsllh");
+
+    EXPECT_EQ(text_variant.size(), binary_variant.size());
+
+    double difference = 0;
+    double maxdiff = 0;
+    for (size_t i = 0; i < text_variant.size(); i++) {
+        EXPECT_NEAR(text_variant[i], binary_variant[i], 1);
+        difference += abs(text_variant[i] - binary_variant[i]);
+        maxdiff = fmax(maxdiff, abs(text_variant[i] - binary_variant[i]));
+    }
+
+    std::cout << "Average difference: " << difference / text_variant.size() << "\n";
+    std::cout << "Max diff: " << maxdiff << "\n";
+
 }

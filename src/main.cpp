@@ -4,10 +4,18 @@
 #include <vector>
 #include <cassert>
 #include <cmath>
+#include <string>
 #include "binary_tree.hpp"
 #include "io.hpp"
 
 using namespace std;
+
+extern void attach_debugger(bool condition);
+
+void output_result(double sum) {
+    printf("%.64f\n", sum);
+}
+
 
 int main(int argc, char **argv) {
 
@@ -24,12 +32,18 @@ int main(int argc, char **argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &c_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &c_size);
 
-    vector<double> summands = IO::read_psllh(argv[1]);
+    vector<double> summands;
+    string filename(argv[1]);
+    if (filename.ends_with("binpsllh")) {
+        summands = IO::read_binpsllh(filename);
+    } else {
+        summands = IO::read_psllh(filename);
+    }
     assert(c_size < summands.size());
     uint64_t n_summands_per_rank = floor(summands.size() / c_size);
     uint64_t remaining = summands.size() - n_summands_per_rank * c_size;
 
-    summands.resize(n_summands_per_rank * c_rank);
+    //summands.resize(n_summands_per_rank * c_rank);
 
     vector<uint64_t> summands_per_rank;
     for (uint64_t i = 0; i < c_size; i++) {
@@ -40,25 +54,29 @@ int main(int argc, char **argv) {
 
     if (argc == 3 && (0 == strcmp(argv[2], "--serial"))) {
         if (c_rank == 0) {
-            cout << "Serial Sum: " << std::accumulate(summands.begin(),
-                    summands.end(), 0.0) << endl;
+            cout << "Calculating sum using std::accumulate" << endl;
+            attach_debugger(0);
+            const double sum = std::accumulate(summands.begin(), summands.end(), 0.0);
+            output_result(sum);
+
         }
     } else if (argc == 3 && (0 == strcmp(argv[2], "--mpi"))) {
         DistributedBinaryTree tree(c_rank, summands_per_rank);
         tree.read_from_array(&summands[0]);
         auto sum = tree.allreduce();
         if (1 || c_rank == 0) {
-            cout << "MPI_Allreduce Sum: " << sum << endl;
+            cout << "Calculating using MPI_Allreduce" << endl;
+            output_result(sum);
         }
     } else {
         DistributedBinaryTree tree(c_rank, summands_per_rank);
         tree.read_from_array(&summands[0]);
 
-        double result;
-        result = tree.accumulate();
+        double sum = tree.accumulate();
 
         if (c_rank == 0) {
-            cout << "Distributed Sum: " << result << endl;
+            cout << "Calculating using BinaryTree" << endl;
+            output_result(sum);
         }
     }
 

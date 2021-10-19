@@ -1,5 +1,6 @@
 #include <mpi.h>
 #include <iostream>
+#include <fstream>
 #include <exception>
 #include <vector>
 #include <numeric>
@@ -17,6 +18,11 @@ using namespace std::string_literals;
 void attach_debugger(bool condition) {
     if (!condition) return;
     bool attached = false;
+
+    // also write PID to a file
+    ofstream os("/tmp/mpi_debug.pid");
+    os << getpid() << endl;
+    os.close();
 
     cout << "Waiting for debugger to be attached, PID: " << getpid() << endl;
     while (!attached) sleep(1);

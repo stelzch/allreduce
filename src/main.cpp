@@ -13,7 +13,7 @@ using namespace std;
 extern void attach_debugger(bool condition);
 
 void output_result(double sum) {
-    printf("%.64f\n", sum);
+    printf("sum=%.64f\n", sum);
 }
 
 
@@ -42,6 +42,7 @@ int main(int argc, char **argv) {
     assert(c_size < summands.size());
     uint64_t n_summands_per_rank = floor(summands.size() / c_size);
     uint64_t remaining = summands.size() - n_summands_per_rank * c_size;
+    cout << "[IO] Loaded " << summands.size() << " summands from " << filename << endl;
 
     // Reduce size of summands to nearest multiple of c_size
     // summands.resize(n_summands_per_rank * c_size);

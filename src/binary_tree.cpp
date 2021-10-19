@@ -28,7 +28,7 @@ void attach_debugger(bool condition) {
     while (!attached) sleep(1);
 }
 
-DistributedBinaryTree::DistributedBinaryTree(uint64_t rank, vector<uint64_t> n_summands) {
+DistributedBinaryTree::DistributedBinaryTree(uint64_t rank, vector<uint64_t> n_summands) : nodeIndex { 0 } {
     n_ranks = n_summands.size();
     this->rank = rank;
     this->n_summands = n_summands;
@@ -39,7 +39,9 @@ DistributedBinaryTree::DistributedBinaryTree(uint64_t rank, vector<uint64_t> n_s
     end = begin + size;
     globalSize =  std::accumulate(n_summands.begin(), n_summands.end(), 0);
 
-    //cout << "Begin: " << begin << ", end: " << end << endl;
+#ifdef DEBUG
+    printf("Rank %i has %i summands, starting from index %i to %i\n", rank, size, begin, end);
+#endif
 }
 
 
@@ -50,44 +52,19 @@ void DistributedBinaryTree::read_from_array(double *array) {
     }
 }
 
-uint64_t DistributedBinaryTree::parent(uint64_t i) {
-    if (i == 0) {
-        throw logic_error("Node with index 0 has no parent");
-    }
+const uint64_t DistributedBinaryTree::parent(uint64_t i) const {
+    assert(i != 0);
 
     // clear least significand set bit
     return i & (i - 1);
 }
 
-// TODO: replace with memory-efficient generator or co-routine
-vector<uint64_t> DistributedBinaryTree::children(uint64_t i) {
-    vector<uint64_t> result;
-
-    int lsb_index = ffs(i);
-    if (lsb_index == 0) {
-        // If no bits are set, iterate over all zeros
-        lsb_index = 31;
-    }
-
-    // Iterate over all variants where one of the least significant zeros
-    // has been replaced with a one.
-    for (int j = 1; j < lsb_index; j++) {
-        int zero_position = j - 1;
-        uint64_t child_index = i | (1 << zero_position);
-
-        if (child_index < globalSize)
-            result.push_back(child_index);
-    }
-
-    return result;
-}
-
-bool DistributedBinaryTree::isLocal(uint64_t index) {
+const bool DistributedBinaryTree::isLocal(uint64_t index) const {
     return (index >= begin && index < end);
 }
 
 /** Determine which rank has the number with a given index */
-uint64_t DistributedBinaryTree::rankFromIndex(uint64_t index) {
+const uint64_t DistributedBinaryTree::rankFromIndex(uint64_t index) const {
     uint64_t rankLocalIndex = index;
 
     for (uint64_t sourceRank = 0; sourceRank < n_ranks; sourceRank++) {
@@ -105,17 +82,14 @@ uint64_t DistributedBinaryTree::rankFromIndex(uint64_t index) {
     throw logic_error("Number cannot be found on any node");
 }
 
-double DistributedBinaryTree::acquireNumber(uint64_t index) {
+const double DistributedBinaryTree::acquireNumber(uint64_t index) const {
     if (isLocal(index)) {
-        //cout << "Number is local" << endl;
         // We have that number locally
         return summands[index - begin];
     }
 
     uint64_t sourceRank = rankFromIndex(index);
     double result;
-    //cout << "Receiving from " << sourceRank
-    //    << " with tag " << index << " data " << result << endl;
     MPI_Recv(&result, 1, MPI_DOUBLE,
             sourceRank, index, MPI_COMM_WORLD, NULL);
 
@@ -125,7 +99,7 @@ double DistributedBinaryTree::acquireNumber(uint64_t index) {
 /* Calculate all rank-intersecting summands that must be sent out because
     * their parent is non-local and located on another rank
     */
-vector<uint64_t> DistributedBinaryTree::rankIntersectingSummands(void) {
+const vector<uint64_t> DistributedBinaryTree::rankIntersectingSummands(void) const {
     vector<uint64_t> result;
 
     // ignore index 0
@@ -148,9 +122,6 @@ double DistributedBinaryTree::accumulate(void) {
         // TODO: Send out summand
         MPI_Send(&result, 1, MPI_DOUBLE,
                 rankFromIndex(parent(summand)), summand, MPI_COMM_WORLD);
-        //cout << "Sending to " << rankFromIndex(parent(summand))
-        //    << " with tag " << summand << " data " << result << endl;
-                
     }
 
     if (rank == 0) {
@@ -172,8 +143,6 @@ double DistributedBinaryTree::allreduce(void) {
     MPI_Allreduce(&summands[0], &reduced_sums[0], size,
             MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-    //attach_debugger(0 == rank);
-
     // Calculate sum of accumulated values
     auto sum = std::accumulate(reduced_sums.begin(),
             reduced_sums.end(), 0);
@@ -185,10 +154,13 @@ double DistributedBinaryTree::accumulate(uint64_t index) {
     //cout << "accumulate(" << index << ")" << endl;
     double accumulator = acquireNumber(index);
 
-    if (!isLocal(index)) {
-        //cout << endl;
-        return accumulator;
+#ifdef DEBUG
+    if (isLocal(index))
+        printf("rk%i C%i.0 = %f\n", rank, index, accumulator);
+#endif
 
+    if (!isLocal(index)) {
+        return accumulator;
     }
 
     int lsb_index = ffs(index);
@@ -206,6 +178,9 @@ double DistributedBinaryTree::accumulate(uint64_t index) {
         if (child_index < globalSize) {
             double num = accumulate(child_index);
             accumulator += num;
+#ifdef DEBUG
+            printf("rk%i C%i.%i = C%i.%i + %f\n", rank, index, j, index, j - 1, num);
+#endif
         }
     }
 

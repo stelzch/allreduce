@@ -37,6 +37,7 @@ add_executable(
     BinomialAllReduce
     src/main.cpp src/binary_tree.cpp
 )
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 target_include_directories(BinomialAllReduce PRIVATE ${MPI_CXX_INCLUDE_PATH})
 target_compile_options(BinomialAllReduce PRIVATE ${MPI_CXX_COMPILE_FLAGS})
 target_link_libraries(BinomialAllReduce ${MPI_CXX_LIBRARIES} ${MPI_CXX_LINK_FLAGS} IO)

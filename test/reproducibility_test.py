@@ -41,5 +41,5 @@ def check_reproducibility(datafile, mode, reproducibilityExpected):
 if __name__ == "__main__":
     datafile = "data/354.binpsllh"
     check_reproducibility(datafile, "--serial", True)
-    check_reproducibility(datafile, "--mpi", False)
+    #check_reproducibility(datafile, "--mpi", False)
     check_reproducibility(datafile, "", True)

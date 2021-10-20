@@ -16,6 +16,32 @@ void output_result(double sum) {
     printf("sum=%.64f\n", sum);
 }
 
+int c_rank, c_size;
+double Allreduce_accumulate(const vector<double>& summands) {
+    const uint64_t summands_per_rank = floor(summands.size() / c_size);
+    const uint64_t remaining = summands.size() - summands_per_rank * c_size;
+
+    vector<double> buffer;
+    buffer.resize(summands_per_rank);
+    
+    // Scatter summands to all ranks
+    MPI_Scatter(&summands[0], summands_per_rank, MPI_DOUBLE,
+            &buffer[0], summands_per_rank, MPI_DOUBLE,
+            0, MPI_COMM_WORLD);
+    
+    // Accumulate locally
+    double localSum = std::accumulate(buffer.begin(), buffer.end(), 0.0);
+    if (c_rank == 0) {
+        // Also add remaining elements to sum
+        localSum += std::accumulate(summands.end() - remaining, summands.end(), 0.0);
+    }
+
+    double globalSum;
+    MPI_Allreduce(&localSum, &globalSum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+    return globalSum;
+}
+
 
 int main(int argc, char **argv) {
 
@@ -28,7 +54,6 @@ int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
 
 
-    int c_rank, c_size;
     MPI_Comm_rank(MPI_COMM_WORLD, &c_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &c_size);
 
@@ -63,10 +88,8 @@ int main(int argc, char **argv) {
 
         }
     } else if (argc == 3 && (0 == strcmp(argv[2], "--mpi"))) {
-        DistributedBinaryTree tree(c_rank, summands_per_rank);
-        tree.read_from_array(&summands[0]);
-        auto sum = tree.allreduce();
-        if (1 || c_rank == 0) {
+        auto sum = Allreduce_accumulate(summands);
+        if (c_rank == 0) {
             cout << "Calculating using MPI_Allreduce" << endl;
             output_result(sum);
         }

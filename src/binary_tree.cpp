@@ -131,25 +131,6 @@ double DistributedBinaryTree::accumulate(void) {
     }
 }
 
-double DistributedBinaryTree::allreduce(void) {
-    for (const auto x : n_summands) {
-        // MPI Allreduce only works with uniform summand count
-        assert(x == n_summands[0]);
-    }
-
-    const size_t size = n_summands[0];
-
-    vector<double> reduced_sums(size);
-    MPI_Allreduce(&summands[0], &reduced_sums[0], size,
-            MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
-    // Calculate sum of accumulated values
-    auto sum = std::accumulate(reduced_sums.begin(),
-            reduced_sums.end(), 0);
-
-    return sum;
-}
-
 double DistributedBinaryTree::accumulate(uint64_t index) {
     //cout << "accumulate(" << index << ")" << endl;
     double accumulator = acquireNumber(index);

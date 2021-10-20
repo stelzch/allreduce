@@ -27,8 +27,6 @@ public:
      */
     double accumulate(void);
 
-    double allreduce(void);
-
 protected:
     double accumulate(uint64_t index);
 

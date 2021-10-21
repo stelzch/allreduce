@@ -7,6 +7,7 @@
 #include <string>
 #include "binary_tree.hpp"
 #include "io.hpp"
+#include "util.hpp"
 
 using namespace std;
 
@@ -82,13 +83,17 @@ int main(int argc, char **argv) {
     if (argc == 3 && (0 == strcmp(argv[2], "--serial"))) {
         if (c_rank == 0) {
             cout << "Calculating sum using std::accumulate" << endl;
-            attach_debugger(0);
+
+            Util::startTimer();
             const double sum = std::accumulate(summands.begin(), summands.end(), 0.0);
+            printf("Calculation on rank %i took %f µs\n", c_rank, Util::endTimer());
             output_result(sum);
 
         }
     } else if (argc == 3 && (0 == strcmp(argv[2], "--mpi"))) {
+        Util::startTimer();
         auto sum = Allreduce_accumulate(summands);
+        printf("Calculation on rank %i took %f µs\n", c_rank, Util::endTimer());
         if (c_rank == 0) {
             cout << "Calculating using MPI_Allreduce" << endl;
             output_result(sum);
@@ -97,7 +102,9 @@ int main(int argc, char **argv) {
         DistributedBinaryTree tree(c_rank, summands_per_rank);
         tree.read_from_array(&summands[0]);
 
+        Util::startTimer();
         double sum = tree.accumulate();
+        printf("Calculation on rank %i took %f µs\n", c_rank, Util::endTimer());
 
         if (c_rank == 0) {
             cout << "Calculating using BinaryTree" << endl;

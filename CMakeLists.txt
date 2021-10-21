@@ -35,7 +35,7 @@ gtest_discover_tests(tests)
 find_package(MPI REQUIRED)
 add_executable(
     BinomialAllReduce
-    src/main.cpp src/binary_tree.cpp
+    src/main.cpp src/binary_tree.cpp src/util.cpp
 )
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 target_include_directories(BinomialAllReduce PRIVATE ${MPI_CXX_INCLUDE_PATH})

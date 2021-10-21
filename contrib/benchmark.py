@@ -42,7 +42,6 @@ for datafile in datafiles:
             for run in range(n_runs):
                 print(f"\t\t\t{run + 1} / {n_runs}")
                 cmd = f"mpirun -np {cluster_size} ./build/BinomialAllReduce {datafile} {mode}"
-                #print("\t\t\t\tRunning " + cmd)
                 r = subprocess.run(cmd, shell=True, capture_output=True)
                 output = r.stdout.decode("utf-8")
                 rankTimes = [(int(match.group(1)), float(match.group(2)))

@@ -30,6 +30,9 @@ double Allreduce_accumulate(const vector<double>& summands) {
             &buffer[0], summands_per_rank, MPI_DOUBLE,
             0, MPI_COMM_WORLD);
     
+    // Timer is started after data has been distributed
+    Util::startTimer();
+
     // Accumulate locally
     double localSum = std::accumulate(buffer.begin(), buffer.end(), 0.0);
     if (c_rank == 0) {
@@ -91,7 +94,6 @@ int main(int argc, char **argv) {
 
         }
     } else if (argc == 3 && (0 == strcmp(argv[2], "--mpi"))) {
-        Util::startTimer();
         auto sum = Allreduce_accumulate(summands);
         printf("Calculation on rank %i took %f µs\n", c_rank, Util::endTimer());
         if (c_rank == 0) {

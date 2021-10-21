@@ -4,8 +4,8 @@ import subprocess
 import glob
 import re
 
-datafiles = glob.glob("data/*")[:2]
-cluster_sizes = [1, 2, 4, 8]
+datafiles = glob.glob("data/*")
+cluster_sizes = [2, 4, 8]
 modes = ["--tree", "--mpi", "--serial"]
 n_runs = 2
 

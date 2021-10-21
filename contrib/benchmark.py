@@ -5,9 +5,9 @@ import glob
 import re
 
 datafiles = glob.glob("data/*")
-cluster_sizes = [2, 4, 8]
-modes = ["--tree", "--mpi", "--serial"]
-n_runs = 2
+cluster_sizes = [8]
+modes = ["--tree", "--mpi", "--serial"][:2]
+n_runs = 20
 
 os.remove('benchmarks/results.db')
 con = sqlite3.connect('benchmarks/results.db')

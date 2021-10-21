@@ -14,13 +14,18 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 add_library(IO src/io.cpp)
+add_library(Tree src/binary_tree.cpp)
 include_directories(src)
+find_package(MPI REQUIRED)
 add_executable(
     tests
     test/hello_testing.cpp
     test/io_tests.cpp
+    test/binary_tree_tests.cpp
 )
-target_link_libraries(tests IO)
+target_include_directories(tests PRIVATE ${MPI_CXX_INCLUDE_PATH})
+target_compile_options(tests PRIVATE ${MPI_CXX_COMPILE_FLAGS})
+target_link_libraries(tests ${MPI_CXX_LIBRARIES} ${MPI_CXX_LINK_FLAGS} IO Tree)
 add_custom_command(TARGET tests PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory
     ${CMAKE_SOURCE_DIR}/test/data $<TARGET_FILE_DIR:tests>/test/data)
 

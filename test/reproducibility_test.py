@@ -11,7 +11,7 @@ FLOAT_REGEX = re.compile("^(-)?[0-9]+\.[0-9]+$")
 
 def run_with_mpi(number_of_ranks, datafile_path, mode):
     cmd = f"mpirun -np {number_of_ranks} {EXECUTABLE} {datafile_path} {mode}"
-    print(f"Running {cmd}")
+    print(f"\tRunning {cmd}")
     result = subprocess.run(
             cmd,
             capture_output=True,
@@ -32,7 +32,6 @@ def check_reproducibility(datafile, mode, reproducibilityExpected):
     avg = np.average(results)
     maxDeviation = np.max(np.abs(results - avg))
     allEqual = reduce(lambda a, b: a and b, [results[0] == x for x in results])
-    print(allEqual)
     
     if reproducibilityExpected:
         if allEqual:
@@ -42,7 +41,8 @@ def check_reproducibility(datafile, mode, reproducibilityExpected):
             print(f"Reproducibility {mode} [FAIL], results = {results}, maxDeviation = {maxDeviation}")
             return False
     else:
-        print(f"{mode} [OK], results = {results}, maxDeviation = {maxDeviation}")
+        msg = "OK" if allEqual else "FAIL"
+        print(f"Reproducibility {mode} [{msg}], results = {results}, maxDeviation = {maxDeviation}")
         return True
 
 
@@ -53,6 +53,7 @@ if __name__ == "__main__":
         datafile = "data/" + file
         if not check_reproducibility(datafile, "--serial", True):
             retcode = -1
-        if not check_reproducibility(datafile, "", True):
+        if not check_reproducibility(datafile, "--tree", True):
             retcode = -1
+        check_reproducibility(datafile, "--mpi", False)
     sys.exit(retcode)

@@ -28,14 +28,23 @@ target_compile_options(tests PRIVATE ${MPI_CXX_COMPILE_FLAGS})
 target_link_libraries(tests ${MPI_CXX_LIBRARIES} ${MPI_CXX_LINK_FLAGS} IO Tree)
 add_custom_command(TARGET tests PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory
     ${CMAKE_SOURCE_DIR}/test/data $<TARGET_FILE_DIR:tests>/test/data)
-
 target_link_libraries(
     tests
     gtest_main
 )
-
 include(GoogleTest)
 gtest_discover_tests(tests)
+
+find_package(benchmark REQUIRED)
+add_executable(
+    benchmark
+    benchmarks/treebenchmark.cpp
+)
+target_include_directories(benchmark PRIVATE ${MPI_CXX_INCLUDE_PATH})
+target_compile_options(benchmark PRIVATE ${MPI_CXX_COMPILE_FLAGS})
+target_link_libraries(benchmark ${MPI_CXX_LIBRARIES} ${MPI_CXX_LINK_FLAGS} Tree benchmark::benchmark)
+
+
 
 find_package(MPI REQUIRED)
 add_executable(
@@ -43,6 +52,7 @@ add_executable(
     src/main.cpp src/binary_tree.cpp src/util.cpp
 )
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ggdb -O3")
 target_include_directories(BinomialAllReduce PRIVATE ${MPI_CXX_INCLUDE_PATH})
 target_compile_options(BinomialAllReduce PRIVATE ${MPI_CXX_COMPILE_FLAGS})
 target_link_libraries(BinomialAllReduce ${MPI_CXX_LIBRARIES} ${MPI_CXX_LINK_FLAGS} IO)

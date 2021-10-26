@@ -102,6 +102,10 @@ const double DistributedBinaryTree::acquireNumber(uint64_t index) const {
 const vector<uint64_t> DistributedBinaryTree::rankIntersectingSummands(void) const {
     vector<uint64_t> result;
 
+    if (rank == 0) {
+        return result;
+    }
+
     // ignore index 0
     uint64_t startIndex = (begin == 0) ? 1 : begin;
     for (uint64_t index = startIndex; index < end; index++) {
@@ -132,7 +136,6 @@ double DistributedBinaryTree::accumulate(void) {
 }
 
 double DistributedBinaryTree::accumulate(uint64_t index) {
-    //cout << "accumulate(" << index << ")" << endl;
     double accumulator = acquireNumber(index);
 
 #ifdef DEBUG

@@ -5,9 +5,10 @@ import glob
 import re
 
 datafiles = glob.glob("data/*")
-cluster_sizes = [8]
+cluster_sizes = [4, 8]
 modes = ["--tree", "--mpi", "--serial"][:2]
-n_runs = 20
+n_runs = 1
+program_repetitions = 1.0e4
 
 os.remove('benchmarks/results.db')
 con = sqlite3.connect('benchmarks/results.db')
@@ -50,7 +51,7 @@ for datafile in datafiles:
                             flags=re.MULTILINE)]
                 for (rank, time) in rankTimes:
                     cur.execute('INSERT INTO results VALUES (?, ?, ?, ?, ?, ?, ?)',
-                            (datafile, n_summands, cluster_size, mode[2:], run, rank, time))
+                            (datafile, n_summands, cluster_size, mode[2:], run, rank, time / program_repetitions))
                     con.commit()
 
 con.close()

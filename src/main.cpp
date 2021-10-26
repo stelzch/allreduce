@@ -13,6 +13,8 @@ using namespace std;
 
 extern void attach_debugger(bool condition);
 
+const int repetitions = 1e4;
+
 void output_result(double sum) {
     printf("sum=%.64f\n", sum);
 }
@@ -94,8 +96,14 @@ int main(int argc, char **argv) {
 
         }
     } else if (argc == 3 && (0 == strcmp(argv[2], "--mpi"))) {
-        auto sum = Allreduce_accumulate(summands);
-        printf("Calculation on rank %i took %f µs\n", c_rank, Util::endTimer());
+        double sum;
+        double time = 0;
+        for (auto i = 0L; i < repetitions; i++) {
+            sum = Allreduce_accumulate(summands);
+            time += Util::endTimer();
+
+        }
+        printf("Calculation on rank %i took %f µs\n", c_rank, time);
         if (c_rank == 0) {
             cout << "Calculating using MPI_Allreduce" << endl;
             output_result(sum);
@@ -105,7 +113,10 @@ int main(int argc, char **argv) {
         tree.read_from_array(&summands[0]);
 
         Util::startTimer();
-        double sum = tree.accumulate();
+        double sum;
+        for (auto i = 0L; i < repetitions; i++) {
+            sum = tree.accumulate();
+        }
         printf("Calculation on rank %i took %f µs\n", c_rank, Util::endTimer());
 
         if (c_rank == 0) {

@@ -25,10 +25,10 @@ TEST(BinaryTreeTests, BinaryTreeStructure) {
     EXPECT_EQ(tree.parent(4), 0);
     EXPECT_EQ(tree.parent(2), 0);
 
-    EXPECT_EQ(tree.rankIntersectingSummands().size(), 0);
+    EXPECT_EQ(tree.calculateRankIntersectingSummands().size(), 0);
 
     BinaryTreeSummation treeRk1 (1, n_summands);
-    auto rankIntersectingSummands = treeRk1.rankIntersectingSummands();
+    auto rankIntersectingSummands = treeRk1.calculateRankIntersectingSummands();
     EXPECT_EQ(rankIntersectingSummands.size(), 2);
     EXPECT_EQ(rankIntersectingSummands[0], 3);
     EXPECT_EQ(rankIntersectingSummands[1], 4);

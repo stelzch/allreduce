@@ -26,41 +26,38 @@ void attach_debugger(bool condition) {
     os << getpid() << endl;
     os.close();
 
-    cout << "Waiting for debugger to be attached, PID: " << getpid() << endl;
+    cout << "Waiting for debugger to be attached, PID: "
+        << getpid() << endl;
     while (!attached) sleep(1);
 }
 
 BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
-    : nodeIndex { 0 },
-      SummationStrategy(rank, n_summands) {
-    n_ranks = n_summands.size();
-    size = n_summands[rank];
-
-    begin = startIndex[rank];
-    end = begin + size;
-    globalSize =  std::accumulate(n_summands.begin(), n_summands.end(), 0);
-
+    : SummationStrategy(rank, n_summands),
+      size(n_summands[rank]),
+      begin (startIndex[rank]),
+      end (begin +  size),
+      rankIntersectingSummands(calculateRankIntersectingSummands()){
 #ifdef DEBUG
-    printf("Rank %i has %i summands, starting from index %i to %i\n", rank, size, begin, end);
+    printf("Rank %lu has %lu summands, starting from index %lu to %lu\n", rank, size, begin, end);
 #endif
 }
 
-const uint64_t BinaryTreeSummation::parent(uint64_t i) const {
+uint64_t BinaryTreeSummation::parent(uint64_t i) const {
     assert(i != 0);
 
     // clear least significand set bit
     return i & (i - 1);
 }
 
-const bool BinaryTreeSummation::isLocal(uint64_t index) const {
+bool BinaryTreeSummation::isLocal(uint64_t index) const {
     return (index >= begin && index < end);
 }
 
 /** Determine which rank has the number with a given index */
-const uint64_t BinaryTreeSummation::rankFromIndex(uint64_t index) const {
+uint64_t BinaryTreeSummation::rankFromIndex(uint64_t index) const {
     uint64_t rankLocalIndex = index;
 
-    for (uint64_t sourceRank = 0; sourceRank < n_ranks; sourceRank++) {
+    for (uint64_t sourceRank = 0; sourceRank < clusterSize; sourceRank++) {
         if (rankLocalIndex < n_summands[sourceRank]) {
             //cout << "Idx " << index << " is on rank " << sourceRank
             //     << " with local idx " << rankLocalIndex << endl;
@@ -75,7 +72,7 @@ const uint64_t BinaryTreeSummation::rankFromIndex(uint64_t index) const {
     throw logic_error("Number cannot be found on any node");
 }
 
-const double BinaryTreeSummation::acquireNumber(uint64_t index) const {
+double BinaryTreeSummation::acquireNumber(uint64_t index) const {
     if (isLocal(index)) {
         // We have that number locally
         return summands[index - begin];
@@ -92,7 +89,7 @@ const double BinaryTreeSummation::acquireNumber(uint64_t index) const {
 /* Calculate all rank-intersecting summands that must be sent out because
     * their parent is non-local and located on another rank
     */
-const vector<uint64_t> BinaryTreeSummation::rankIntersectingSummands(void) const {
+vector<uint64_t> BinaryTreeSummation::calculateRankIntersectingSummands(void) const {
     vector<uint64_t> result;
 
     if (rank == 0) {
@@ -113,8 +110,10 @@ const vector<uint64_t> BinaryTreeSummation::rankIntersectingSummands(void) const
 /* Sum all numbers. Will return the total sum on rank 0
     */
 double BinaryTreeSummation::accumulate(void) {
-    for (auto summand : rankIntersectingSummands()) {
+    for (auto summand : rankIntersectingSummands) {
         double result = accumulate(summand);
+
+        // TODO: figure out if this send blocks or not.
         MPI_Send(&result, 1, MPI_DOUBLE,
                 rankFromIndex(parent(summand)), summand, MPI_COMM_WORLD);
     }

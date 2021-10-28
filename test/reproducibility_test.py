@@ -51,9 +51,9 @@ if __name__ == "__main__":
     retcode = 0
     for file in ["354.binpsllh", "fusob.psllh", "prim.psllh", "XiD4.psllh"]:
         datafile = "data/" + file
-        if not check_reproducibility(datafile, "--serial", True):
+        if not check_reproducibility(datafile, "--baseline", True):
             retcode = -1
         if not check_reproducibility(datafile, "--tree", True):
             retcode = -1
-        check_reproducibility(datafile, "--mpi", False)
+        check_reproducibility(datafile, "--allreduce", False)
     sys.exit(retcode)

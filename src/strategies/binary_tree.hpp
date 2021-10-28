@@ -1,14 +1,12 @@
+#include "summation_strategy.hpp"
 #include <cstdint>
 #include <vector>
 
 using std::vector;
 
-class DistributedBinaryTree {
+class BinaryTreeSummation : public SummationStrategy {
 public:
-    DistributedBinaryTree(uint64_t rank, vector<uint64_t> n_summands);
-
-    // Debug call to read data from array of all summands
-    void read_from_array(double *array);
+    BinaryTreeSummation(uint64_t rank, vector<int> &n_summands);
 
     const uint64_t parent(uint64_t i) const;
 
@@ -32,9 +30,7 @@ protected:
     double accumulate(uint64_t index);
 
 private:
-    uint64_t size, globalSize, rank, n_ranks, begin, end, nodeIndex;
-    vector<uint64_t> n_summands;
-    vector<double> summands;
+    uint64_t size, globalSize, n_ranks, begin, end, nodeIndex;
 
 };
 

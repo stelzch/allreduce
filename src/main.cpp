@@ -4,8 +4,11 @@
 #include <vector>
 #include <cassert>
 #include <cmath>
+#include <memory>
 #include <string>
-#include "binary_tree.hpp"
+#include <strategies/allreduce_summation.h>
+#include <strategies/BaselineSummation.h>
+#include "strategies/binary_tree.hpp"
 #include "io.hpp"
 #include "util.hpp"
 
@@ -15,47 +18,52 @@ extern void attach_debugger(bool condition);
 
 const int repetitions = 1e4;
 
+int c_rank, c_size;
+
 void output_result(double sum) {
     printf("sum=%.64f\n", sum);
 }
 
-int c_rank, c_size;
-double Allreduce_accumulate(const vector<double>& summands) {
-    const uint64_t summands_per_rank = floor(summands.size() / c_size);
-    const uint64_t remaining = summands.size() - summands_per_rank * c_size;
+template<typename T> void broadcast_vector(vector<T> &src, int root) {
+    MPI_Datatype type;
+    MPI_Type_match_size(MPI_TYPECLASS_INTEGER, sizeof(T), &type);
 
-    vector<double> buffer;
-    buffer.resize(summands_per_rank);
-    
-    // Scatter summands to all ranks
-    MPI_Scatter(&summands[0], summands_per_rank, MPI_DOUBLE,
-            &buffer[0], summands_per_rank, MPI_DOUBLE,
-            0, MPI_COMM_WORLD);
-    
-    // Timer is started after data has been distributed
-    Util::startTimer();
+    size_t vectorSize = src.size();
+    MPI_Bcast(&vectorSize, 1, type, root, MPI_COMM_WORLD);
 
-    // Accumulate locally
-    double localSum = std::accumulate(buffer.begin(), buffer.end(), 0.0);
-    if (c_rank == 0) {
-        // Also add remaining elements to sum
-        localSum += std::accumulate(summands.end() - remaining, summands.end(), 0.0);
-    }
+    src.resize(vectorSize);
 
-    double globalSum;
-    MPI_Allreduce(&localSum, &globalSum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
-    return globalSum;
+    MPI_Bcast(&src[0], vectorSize, type,
+              root, MPI_COMM_WORLD);
 }
+
+enum SummationStrategies {
+    ALLREDUCE,
+    BASELINE,
+    TREE
+};
+
+enum SummationStrategies parse_mode_arg(string arg) {
+    if (arg == "--allreduce") {
+        return ALLREDUCE;
+    } else if (arg == "--baseline") {
+        return BASELINE;
+    } else if (arg == "--tree") {
+        return TREE;
+    } else {
+        throw runtime_error("Invalid mode: " + arg);
+    }
+}
+
 
 
 int main(int argc, char **argv) {
 
-    if (argc < 2 || argc > 3) {
-        cerr << "Usage: " << argv[0] << " <psllh> [--serial]" << endl;
+    if (argc != 3 || string(argv[1]) == "--help") {
+        cerr << "Usage: " << argv[0] << " <psllh> [--allreduce|--baseline|--tree]" << endl;
         return -1;
     }
-
+    SummationStrategies strategy_type = parse_mode_arg(string(argv[2]));
 
     MPI_Init(&argc, &argv);
 
@@ -64,67 +72,48 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &c_size);
 
     vector<double> summands;
-    string filename(argv[1]);
-    if (filename.ends_with("binpsllh")) {
-        summands = IO::read_binpsllh(filename);
-    } else {
-        summands = IO::read_psllh(filename);
+    vector<int> summands_per_rank;
+    if (c_rank == 0) {
+
+        string filename(argv[1]);
+        if (filename.ends_with("binpsllh")) {
+            summands = IO::read_binpsllh(filename);
+        } else {
+            summands = IO::read_psllh(filename);
+        }
+        assert(c_size < summands.size());
+        int n_summands_per_rank = floor(summands.size() / c_size);
+        int remaining = summands.size() - n_summands_per_rank * c_size;
+        cout << "[IO] Loaded " << summands.size() << " summands from " << filename << endl;
+
+        for (uint64_t i = 0; i < c_size; i++) {
+            summands_per_rank.push_back(n_summands_per_rank);
+        }
+        summands_per_rank[0] += remaining;
     }
-    assert(c_size < summands.size());
-    uint64_t n_summands_per_rank = floor(summands.size() / c_size);
-    uint64_t remaining = summands.size() - n_summands_per_rank * c_size;
-    cout << "[IO] Loaded " << summands.size() << " summands from " << filename << endl;
+    broadcast_vector(summands_per_rank, 0);
 
-    // Reduce size of summands to nearest multiple of c_size
-    // summands.resize(n_summands_per_rank * c_size);
+    std::unique_ptr<SummationStrategy> strategy;
 
-    vector<uint64_t> summands_per_rank;
-    for (uint64_t i = 0; i < c_size; i++) {
-        summands_per_rank.push_back(n_summands_per_rank);
-    }
-    summands_per_rank[0] += remaining;
-
-
-    if (argc == 3 && (0 == strcmp(argv[2], "--serial"))) {
-        if (c_rank == 0) {
-            cout << "Calculating sum using std::accumulate" << endl;
-
-            Util::startTimer();
-            const double sum = std::accumulate(summands.begin(), summands.end(), 0.0);
-            printf("Calculation on rank %i took %f µs\n", c_rank, Util::endTimer());
-            output_result(sum);
-
-        }
-    } else if (argc == 3 && (0 == strcmp(argv[2], "--mpi"))) {
-        double sum;
-        double time = 0;
-        for (auto i = 0L; i < repetitions; i++) {
-            sum = Allreduce_accumulate(summands);
-            time += Util::endTimer();
-
-        }
-        printf("Calculation on rank %i took %f µs\n", c_rank, time);
-        if (c_rank == 0) {
-            cout << "Calculating using MPI_Allreduce" << endl;
-            output_result(sum);
-        }
-    } else {
-        DistributedBinaryTree tree(c_rank, summands_per_rank);
-        tree.read_from_array(&summands[0]);
-
-        Util::startTimer();
-        double sum;
-        for (auto i = 0L; i < repetitions; i++) {
-            sum = tree.accumulate();
-        }
-        printf("Calculation on rank %i took %f µs\n", c_rank, Util::endTimer());
-
-        if (c_rank == 0) {
-            cout << "Calculating using BinaryTree" << endl;
-            output_result(sum);
-        }
+    switch(strategy_type) {
+        case ALLREDUCE:
+            strategy = std::make_unique<AllreduceSummation>(c_rank, summands_per_rank);
+            break;
+        case BASELINE:
+            strategy = std::make_unique<BaselineSummation>(c_rank, summands_per_rank);
+            break;
+        case TREE:
+            strategy = std::make_unique<BinaryTreeSummation>(c_rank, summands_per_rank);
+            break;
     }
 
+
+
+    strategy->distribute(summands);
+    double result = strategy->accumulate();
+    if (c_rank == 0) {
+        output_result(result);
+    }
 
     MPI_Finalize();
 

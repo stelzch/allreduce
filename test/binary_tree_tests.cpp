@@ -1,12 +1,12 @@
 #include <gtest/gtest.h>
 #include <vector>
-#include "binary_tree.hpp"
+#include "strategies/binary_tree.hpp"
 
 using std::vector;
 
 TEST(BinaryTreeTests, BinaryTreeStructure) {
-    const vector<uint64_t> n_summands { 3, 2, 4 };
-    DistributedBinaryTree tree(0, n_summands);
+    vector<int> n_summands { 3, 2, 4 };
+    BinaryTreeSummation tree(0, n_summands);
 
     // 8 summands, we are the first rank which has 3 summands.
     // The first three should be local then, and the others remote
@@ -27,7 +27,7 @@ TEST(BinaryTreeTests, BinaryTreeStructure) {
 
     EXPECT_EQ(tree.rankIntersectingSummands().size(), 0);
 
-    DistributedBinaryTree treeRk1 (1, n_summands);
+    BinaryTreeSummation treeRk1 (1, n_summands);
     auto rankIntersectingSummands = treeRk1.rankIntersectingSummands();
     EXPECT_EQ(rankIntersectingSummands.size(), 2);
     EXPECT_EQ(rankIntersectingSummands[0], 3);

@@ -12,6 +12,8 @@
 #include "io.hpp"
 #include "binary_tree.hpp"
 
+#undef DEBUG_OUTPUT_TREE
+
 using namespace std;
 using namespace std::string_literals;
 
@@ -28,14 +30,13 @@ void attach_debugger(bool condition) {
     while (!attached) sleep(1);
 }
 
-DistributedBinaryTree::DistributedBinaryTree(uint64_t rank, vector<uint64_t> n_summands) : nodeIndex { 0 } {
+BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
+    : nodeIndex { 0 },
+      SummationStrategy(rank, n_summands) {
     n_ranks = n_summands.size();
-    this->rank = rank;
-    this->n_summands = n_summands;
     size = n_summands[rank];
-    summands.resize(size);
 
-    begin = std::accumulate(n_summands.begin(), n_summands.begin() + rank, 0);
+    begin = startIndex[rank];
     end = begin + size;
     globalSize =  std::accumulate(n_summands.begin(), n_summands.end(), 0);
 
@@ -44,27 +45,19 @@ DistributedBinaryTree::DistributedBinaryTree(uint64_t rank, vector<uint64_t> n_s
 #endif
 }
 
-
-// Debug call to read data from array of all summands
-void DistributedBinaryTree::read_from_array(double *array) {
-    for (uint64_t i = begin; i < end; i++) {
-        summands[i - begin] = array[i];
-    }
-}
-
-const uint64_t DistributedBinaryTree::parent(uint64_t i) const {
+const uint64_t BinaryTreeSummation::parent(uint64_t i) const {
     assert(i != 0);
 
     // clear least significand set bit
     return i & (i - 1);
 }
 
-const bool DistributedBinaryTree::isLocal(uint64_t index) const {
+const bool BinaryTreeSummation::isLocal(uint64_t index) const {
     return (index >= begin && index < end);
 }
 
 /** Determine which rank has the number with a given index */
-const uint64_t DistributedBinaryTree::rankFromIndex(uint64_t index) const {
+const uint64_t BinaryTreeSummation::rankFromIndex(uint64_t index) const {
     uint64_t rankLocalIndex = index;
 
     for (uint64_t sourceRank = 0; sourceRank < n_ranks; sourceRank++) {
@@ -82,7 +75,7 @@ const uint64_t DistributedBinaryTree::rankFromIndex(uint64_t index) const {
     throw logic_error("Number cannot be found on any node");
 }
 
-const double DistributedBinaryTree::acquireNumber(uint64_t index) const {
+const double BinaryTreeSummation::acquireNumber(uint64_t index) const {
     if (isLocal(index)) {
         // We have that number locally
         return summands[index - begin];
@@ -99,7 +92,7 @@ const double DistributedBinaryTree::acquireNumber(uint64_t index) const {
 /* Calculate all rank-intersecting summands that must be sent out because
     * their parent is non-local and located on another rank
     */
-const vector<uint64_t> DistributedBinaryTree::rankIntersectingSummands(void) const {
+const vector<uint64_t> BinaryTreeSummation::rankIntersectingSummands(void) const {
     vector<uint64_t> result;
 
     if (rank == 0) {
@@ -119,26 +112,23 @@ const vector<uint64_t> DistributedBinaryTree::rankIntersectingSummands(void) con
 
 /* Sum all numbers. Will return the total sum on rank 0
     */
-double DistributedBinaryTree::accumulate(void) {
+double BinaryTreeSummation::accumulate(void) {
     for (auto summand : rankIntersectingSummands()) {
-        //cout << "Rank intersecting summand = " << summand << endl;
         double result = accumulate(summand);
-        // TODO: Send out summand
         MPI_Send(&result, 1, MPI_DOUBLE,
                 rankFromIndex(parent(summand)), summand, MPI_COMM_WORLD);
     }
+    double result = (rank == ROOT_RANK) ? accumulate(0) : 0.0;
+    MPI_Bcast(&result, 1, MPI_DOUBLE,
+              ROOT_RANK, MPI_COMM_WORLD);
 
-    if (rank == 0) {
-        return accumulate(0);
-    } else {
-        return -1.0;
-    }
+    return result;
 }
 
-double DistributedBinaryTree::accumulate(uint64_t index) {
+double BinaryTreeSummation::accumulate(uint64_t index) {
     double accumulator = acquireNumber(index);
 
-#ifdef DEBUG
+#ifdef DEBUG_OUTPUT_TREE
     if (isLocal(index))
         printf("rk%i C%i.0 = %f\n", rank, index, accumulator);
 #endif
@@ -162,7 +152,7 @@ double DistributedBinaryTree::accumulate(uint64_t index) {
         if (child_index < globalSize) {
             double num = accumulate(child_index);
             accumulator += num;
-#ifdef DEBUG
+#ifdef DEBUG_OUTPUT_TREE
             printf("rk%i C%i.%i = C%i.%i + %f\n", rank, index, j, index, j - 1, num);
 #endif
         }

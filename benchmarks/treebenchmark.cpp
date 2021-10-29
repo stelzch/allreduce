@@ -33,7 +33,7 @@ static void BM_rankIntersectingSummands(benchmark::State& state) {
     }
 
 }
-BENCHMARK(BM_rankIntersectingSummands)->Arg(0)->Arg(23)->Arg(129);
+BENCHMARK(BM_rankIntersectingSummands)->Arg(0)->Arg(121)->Arg(9)->Arg(255);
 
 static void BM_summation(benchmark::State& state) {
     volatile double a = 0.0;

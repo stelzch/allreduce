@@ -17,15 +17,23 @@ static void BM_parent(benchmark::State& state) {
 BENCHMARK(BM_parent)->Arg(2)->Arg(8)->Arg(20);
 
 static void BM_rankIntersectingSummands(benchmark::State& state) {
-    vector<int> n_summands {7, 5, 5, 5};
-    BinaryTreeSummation tree(0, n_summands);
+    const auto n = 21410970; // Tarv D7
+    const auto m = 256; // 256 cores
+    const auto nPerRank = n / m;
+    const auto remainder = n % m;
+
+    vector<int> n_summands(m);
+    for (int i = 0; i < m; i++)
+        n_summands.push_back(nPerRank + ((i < remainder) ? 1 : 0));
+
+    BinaryTreeSummation tree(state.range(0), n_summands);
 
     for (auto _ : state) {
         volatile auto result = tree.calculateRankIntersectingSummands();
     }
 
 }
-BENCHMARK(BM_rankIntersectingSummands);
+BENCHMARK(BM_rankIntersectingSummands)->Arg(0)->Arg(23)->Arg(129);
 
 static void BM_summation(benchmark::State& state) {
     volatile double a = 0.0;

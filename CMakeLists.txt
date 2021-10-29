@@ -14,7 +14,7 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 add_library(IO src/io.cpp)
-add_library(Summation src/strategies/binary_tree.cpp src/strategies/summation_strategy.cpp src/strategies/summation_strategy.cpp src/strategies/allreduce_summation.cpp src/strategies/allreduce_summation.h src/strategies/BaselineSummation.cpp src/strategies/BaselineSummation.h)
+add_library(Summation src/strategies/binary_tree.cpp src/strategies/summation_strategy.cpp src/strategies/summation_strategy.cpp src/strategies/allreduce_summation.cpp src/strategies/allreduce_summation.h src/strategies/BaselineSummation.cpp src/strategies/BaselineSummation.h src/data_distribution.hpp)
 include_directories(src)
 find_package(MPI REQUIRED)
 add_executable(

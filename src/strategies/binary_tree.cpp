@@ -37,7 +37,7 @@ BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
       begin (startIndex[rank]),
       end (begin +  size),
       rankIntersectingSummands(calculateRankIntersectingSummands()){
-#ifdef DEBUG
+#ifdef DEBUG_OUTPUT_TREE
     printf("Rank %lu has %lu summands, starting from index %lu to %lu\n", rank, size, begin, end);
 #endif
 }

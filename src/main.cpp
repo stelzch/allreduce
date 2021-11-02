@@ -5,7 +5,9 @@
 #include <cassert>
 #include <cmath>
 #include <memory>
+#include <cmath>
 #include <string>
+#include <chrono>
 #include <strategies/allreduce_summation.h>
 #include <strategies/BaselineSummation.h>
 #include "strategies/binary_tree.hpp"
@@ -16,7 +18,7 @@ using namespace std;
 
 extern void attach_debugger(bool condition);
 
-const int repetitions = 1e4;
+int repetitions = 1;
 
 int c_rank, c_size;
 
@@ -57,12 +59,24 @@ enum SummationStrategies parse_mode_arg(string arg) {
 
 
 
+
+
 int main(int argc, char **argv) {
 
-    if (argc != 3 || string(argv[1]) == "--help") {
-        cerr << "Usage: " << argv[0] << " <psllh> [--allreduce|--baseline|--tree]" << endl;
+    if (argc < 3 || string(argv[1]) == "--help") {
+        cerr << "Usage: " << argv[0] << " <psllh> [--allreduce|--baseline|--tree] [repetitions]" << endl;
         return -1;
     }
+
+    if (argc == 4) {
+        repetitions = std::atoi(argv[3]);
+    }
+
+    if (repetitions < 0) {
+        cerr << "Error: repetitions must be positive number" << endl;
+        return -1;
+    }
+
     SummationStrategies strategy_type = parse_mode_arg(string(argv[2]));
 
     MPI_Init(&argc, &argv);
@@ -110,9 +124,40 @@ int main(int argc, char **argv) {
 
 
     strategy->distribute(summands);
-    double result = strategy->accumulate();
-    if (c_rank == 0) {
+
+    double result;
+
+    // Duration of the accumulate operation in nanoseconds
+    std::vector<double> timings;
+    timings.reserve(repetitions);
+
+    for(int i = 0; i < repetitions; i++) {
+        // perform the actual calculation
+        auto timestamp_before = std::chrono::high_resolution_clock::now();
+        result = strategy->accumulate();
+        auto timestamp_after = std::chrono::high_resolution_clock::now();
+
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>
+            (timestamp_after - timestamp_before);
+        timings.push_back(duration.count());
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+
+#ifdef REPORT_TIMINGS
+    cout << "Timings";
+    for (auto t : timings)
+        cout << " " << t;
+    cout << endl;
+#endif
+
+    if (c_rank == 0 && repetitions != 0) {
         output_result(result);
+
+        // Calculate and output timing information
+        auto avg = Util::average(timings);
+        auto stddev = Util::stddev(timings);
+        cout << "avg=" << avg << endl;
+        cout << "stddev=" << stddev << endl;
     }
 
     MPI_Finalize();

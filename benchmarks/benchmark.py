@@ -4,11 +4,10 @@ import subprocess
 import glob
 import re
 
-datafiles = glob.glob("data/*")
+datafiles = glob.glob("data/*")[:5]
 cluster_sizes = [4, 8]
-modes = ["--tree", "--mpi", "--serial"][:2]
-n_runs = 1
-program_repetitions = 1.0e4
+modes = ["--tree", "--allreduce", "--baseline"][:2]
+program_repetitions = 10
 
 os.remove('benchmarks/results.db')
 con = sqlite3.connect('benchmarks/results.db')
@@ -18,10 +17,18 @@ cur.execute("""CREATE TABLE results (
     n_summands INTEGER,
     cluster_size INTEGER,
     mode TEXT,
-    run INTEGER,
-    rank INTEGER,
-    time_us REAL);
+    time_ns REAL,
+    stddev REAL);
 """)
+
+def grep_number(name, string):
+    regexp = f"^{name}=([+\-0-9.e]+)$"
+    m = re.search(regexp, string, flags=re.MULTILINE)
+    if m == None:
+        return m
+    else:
+        return float(m.group(1))
+
 
 for datafile in datafiles:
     print(datafile)
@@ -40,18 +47,13 @@ for datafile in datafiles:
         print(f"\tnp = {cluster_size}")
         for mode in modes:
             print(f"\t\tmode = {mode[2:]}")
-            for run in range(n_runs):
-                print(f"\t\t\t{run + 1} / {n_runs}")
-                cmd = f"mpirun -np {cluster_size} ./build/BinomialAllReduce {datafile} {mode}"
-                r = subprocess.run(cmd, shell=True, capture_output=True)
-                output = r.stdout.decode("utf-8")
-                rankTimes = [(int(match.group(1)), float(match.group(2)))
-                        for match in re.finditer(r"Calculation on rank (\d+) took (\S+) µs$",
-                            output,
-                            flags=re.MULTILINE)]
-                for (rank, time) in rankTimes:
-                    cur.execute('INSERT INTO results VALUES (?, ?, ?, ?, ?, ?, ?)',
-                            (datafile, n_summands, cluster_size, mode[2:], run, rank, time / program_repetitions))
-                    con.commit()
+            cmd = f"mpirun -np {cluster_size} ./build/BinomialAllReduce {datafile} {mode} {program_repetitions}"
+            r = subprocess.run(cmd, shell=True, capture_output=True)
+            output = r.stdout.decode("utf-8")
+            time = grep_number("avg", output)
+            stddev = grep_number("stddev", output)
+            cur.execute('INSERT INTO results VALUES (?, ?, ?, ?, ?, ?)',
+                    (datafile, n_summands, cluster_size, mode[2:], time, stddev))
+            con.commit()
 
 con.close()

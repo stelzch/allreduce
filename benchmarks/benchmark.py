@@ -4,10 +4,10 @@ import subprocess
 import glob
 import re
 
-datafiles = glob.glob("data/*")[:5]
-cluster_sizes = [4, 8]
-modes = ["--tree", "--allreduce", "--baseline"][:2]
-program_repetitions = 10
+datafiles = glob.glob("data/*")
+cluster_sizes = [8]
+modes = ["--tree", "--allreduce", "--baseline"]
+program_repetitions = 50
 
 os.remove('benchmarks/results.db')
 con = sqlite3.connect('benchmarks/results.db')

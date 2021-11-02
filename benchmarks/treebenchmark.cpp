@@ -3,6 +3,7 @@
 #include <vector>
 #include <cstdint>
 #include <mpi.h>
+#include <chrono>
 
 using std::vector;
 
@@ -43,5 +44,18 @@ static void BM_summation(benchmark::State& state) {
 
 }
 BENCHMARK(BM_summation);
+
+static void BM_chrono(benchmark::State& state) {
+    using ns = std::chrono::nanoseconds;
+    std::chrono::duration<double> acc;
+    for (auto _ : state) {
+        volatile auto t1 = std::chrono::high_resolution_clock::now();
+        //auto t2 = std::chrono::high_resolution_clock::now();
+        //auto diff = (t2 - t1);
+        //acc += diff;
+
+    }
+}
+BENCHMARK(BM_chrono);
 
 BENCHMARK_MAIN();

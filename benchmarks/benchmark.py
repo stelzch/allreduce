@@ -47,6 +47,7 @@ for datafile in datafiles:
         print(f"\tnp = {cluster_size}")
         for mode in modes:
             print(f"\t\tmode = {mode[2:]}")
+            repetitions = program_repetitions * 1_000 if n_summands < 2**16 else program_repetitions
             cmd = f"mpirun -np {cluster_size} ./build/BinomialAllReduce {datafile} {mode} {program_repetitions}"
             r = subprocess.run(cmd, shell=True, capture_output=True)
             output = r.stdout.decode("utf-8")

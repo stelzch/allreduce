@@ -2,9 +2,15 @@
 #include <vector>
 #include <numeric>
 #include <cmath>
+#include <fstream>
+#include <iostream>
+#include <unistd.h>
 #include "util.hpp"
 
 using std::vector;
+using std::cout;
+using std::endl;
+using std::ofstream;
 
 std::chrono::time_point<std::chrono::high_resolution_clock> last;
 
@@ -30,4 +36,18 @@ double Util::stddev(const vector<double> &v) {
         accumulator += pow(x - avg, 2.0);
 
     return sqrt(accumulator / v.size());
+}
+
+void Util::attach_debugger(bool condition) {
+    if (!condition) return;
+    bool attached = false;
+
+    // also write PID to a file
+    ofstream os("/tmp/mpi_debug.pid");
+    os << getpid() << endl;
+    os.close();
+
+    cout << "Waiting for debugger to be attached, PID: "
+        << getpid() << endl;
+    while (!attached) sleep(1);
 }

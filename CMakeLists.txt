@@ -15,6 +15,7 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 add_library(IO src/io.cpp)
 add_library(Summation src/strategies/binary_tree.cpp src/strategies/summation_strategy.cpp src/strategies/summation_strategy.cpp src/strategies/allreduce_summation.cpp src/strategies/allreduce_summation.h src/strategies/BaselineSummation.cpp src/strategies/BaselineSummation.h src/data_distribution.hpp)
+add_library(Util src/util.cpp)
 include_directories(src)
 find_package(MPI REQUIRED)
 add_executable(
@@ -45,14 +46,18 @@ target_compile_options(benchmark PRIVATE ${MPI_CXX_COMPILE_FLAGS})
 target_link_libraries(benchmark ${MPI_CXX_LIBRARIES} ${MPI_CXX_LINK_FLAGS} Summation benchmark::benchmark)
 
 
+add_executable(tree_simulation src/tree_simulations.cpp)
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ggdb -O3")
+target_link_libraries(tree_simulation Util)
+
 
 find_package(MPI REQUIRED)
 add_executable(
     BinomialAllReduce
-    src/main.cpp src/util.cpp
+    src/main.cpp
 )
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG -ggdb")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ggdb -O3")
 target_include_directories(BinomialAllReduce PRIVATE ${MPI_CXX_INCLUDE_PATH})
 target_compile_options(BinomialAllReduce PRIVATE ${MPI_CXX_COMPILE_FLAGS})
-target_link_libraries(BinomialAllReduce ${MPI_CXX_LIBRARIES} ${MPI_CXX_LINK_FLAGS} IO Summation)
+target_link_libraries(BinomialAllReduce ${MPI_CXX_LIBRARIES} ${MPI_CXX_LINK_FLAGS} IO Summation Util)

@@ -17,20 +17,6 @@
 using namespace std;
 using namespace std::string_literals;
 
-void attach_debugger(bool condition) {
-    if (!condition) return;
-    bool attached = false;
-
-    // also write PID to a file
-    ofstream os("/tmp/mpi_debug.pid");
-    os << getpid() << endl;
-    os.close();
-
-    cout << "Waiting for debugger to be attached, PID: "
-        << getpid() << endl;
-    while (!attached) sleep(1);
-}
-
 BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
     : SummationStrategy(rank, n_summands),
       size(n_summands[rank]),

@@ -10,4 +10,5 @@ namespace Util {
     double endTimer();
     const double average(const vector<double> &v);
     double stddev(const vector<double> &v);
+    void attach_debugger(bool condition);
 }

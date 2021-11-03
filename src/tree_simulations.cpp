@@ -188,4 +188,22 @@ int main(int argc, char **argv) {
     cout << "Optimized: "; optimized.printScore();
     optimized.printDistribution();
 
+    // Try to find an optimal distribution
+    Distribution candidate(1,1);
+    double score = INFINITY;
+    double candidateVariance = 1.0;
+    for (double testedVariance = 1.0; testedVariance > 0.0; testedVariance -= 0.001) {
+        auto generated = Distribution::lsb_cleared(n, ranks, testedVariance);
+        if (generated.score() < score) {
+            candidate = generated;
+            score = generated.score();
+            candidateVariance = testedVariance;
+        }
+    }
+
+    cout << "Best optimization with variance " << candidateVariance << endl;
+    candidate.printScore(); candidate.printDistribution();
+
+    
+
 }

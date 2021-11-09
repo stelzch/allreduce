@@ -50,6 +50,7 @@ for datafile in datafiles:
             repetitions = program_repetitions * 1_000 if n_summands < 2**16 else program_repetitions
             cmd = f"mpirun -np {cluster_size} ./build/BinomialAllReduce {datafile} {mode} {program_repetitions}"
             r = subprocess.run(cmd, shell=True, capture_output=True)
+            r.check_returncode()
             output = r.stdout.decode("utf-8")
             time = grep_number("avg", output)
             stddev = grep_number("stddev", output)

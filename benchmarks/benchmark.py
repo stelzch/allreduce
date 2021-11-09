@@ -5,7 +5,7 @@ import glob
 import re
 
 datafiles = glob.glob("data/*")
-cluster_sizes = [8]
+cluster_sizes = [os.cpu_count()]
 modes = ["--tree", "--allreduce", "--baseline"]
 program_repetitions = 50
 
@@ -45,6 +45,7 @@ for datafile in datafiles:
 
     for cluster_size in cluster_sizes:
         print(f"\tnp = {cluster_size}")
+        last_result = None
         for mode in modes:
             print(f"\t\tmode = {mode[2:]}")
             repetitions = program_repetitions * 1_000 if n_summands < 2**16 else program_repetitions
@@ -54,6 +55,14 @@ for datafile in datafiles:
             output = r.stdout.decode("utf-8")
             time = grep_number("avg", output)
             stddev = grep_number("stddev", output)
+            result = grep_number("sum", output)
+
+            if last_result is not None:
+                deviation = abs(last_result - result)
+                if deviation > 1e-6:
+                    print(f"\t\tLarge deviation to previous run detected: {deviation}")
+            last_result = result
+
             cur.execute('INSERT INTO results VALUES (?, ?, ?, ?, ?, ?)',
                     (datafile, n_summands, cluster_size, mode[2:], time, stddev))
             con.commit()

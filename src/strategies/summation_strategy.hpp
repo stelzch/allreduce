@@ -28,9 +28,9 @@ public:
     virtual ~SummationStrategy();
 
 protected:
+    const vector<int> n_summands;
     const int rank, clusterSize;
     const uint64_t globalSize;
-    const vector<int> n_summands;
     vector<int> startIndex;
     vector<double> summands;
     const int ROOT_RANK = 0;

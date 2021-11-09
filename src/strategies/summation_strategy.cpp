@@ -9,10 +9,10 @@
 #include <limits>
 
 SummationStrategy::SummationStrategy(uint64_t rank, vector<int> &n_summands)
-    : rank(rank),
-      n_summands(n_summands),
-      globalSize(std::accumulate(n_summands.begin(), n_summands.end(), 0L)),
-      clusterSize(n_summands.size()) {
+    : n_summands(n_summands),
+      rank(rank),
+      clusterSize(n_summands.size()),
+      globalSize(std::accumulate(n_summands.begin(), n_summands.end(), 0L)) {
 
     summands.resize(n_summands[rank]);
     startIndex.reserve(n_summands.size());

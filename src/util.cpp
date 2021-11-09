@@ -24,7 +24,7 @@ double Util::endTimer() {
     return microseconds;
 }
 
-const double Util::average(const vector<double> &v) {
+double Util::average(const vector<double> &v) {
     return std::accumulate(v.begin(), v.end(), 0.0) / v.size();
 }
 

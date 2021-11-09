@@ -41,9 +41,9 @@ bool BinaryTreeSummation::isLocal(uint64_t index) const {
 
 /** Determine which rank has the number with a given index */
 uint64_t BinaryTreeSummation::rankFromIndex(uint64_t index) const {
-    uint64_t rankLocalIndex = index;
+    int64_t rankLocalIndex = index;
 
-    for (uint64_t sourceRank = 0; sourceRank < clusterSize; sourceRank++) {
+    for (int64_t sourceRank = 0; sourceRank < clusterSize; sourceRank++) {
         if (rankLocalIndex < n_summands[sourceRank]) {
             //cout << "Idx " << index << " is on rank " << sourceRank
             //     << " with local idx " << rankLocalIndex << endl;

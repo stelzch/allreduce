@@ -95,12 +95,12 @@ int main(int argc, char **argv) {
         } else {
             summands = IO::read_psllh(filename);
         }
-        assert(c_size < summands.size());
+        assert(static_cast<long unsigned>(c_size) < summands.size());
         int n_summands_per_rank = floor(summands.size() / c_size);
         int remaining = summands.size() - n_summands_per_rank * c_size;
         cout << "[IO] Loaded " << summands.size() << " summands from " << filename << endl;
 
-        for (uint64_t i = 0; i < c_size; i++) {
+        for (uint64_t i = 0; i < static_cast<long unsigned>(c_size); i++) {
             summands_per_rank.push_back(n_summands_per_rank);
         }
         summands_per_rank[0] += remaining;

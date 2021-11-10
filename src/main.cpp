@@ -1,3 +1,4 @@
+#include <limits>
 #include <numeric>
 #include <iostream>
 #include <mpi.h>
@@ -10,15 +11,15 @@
 #include <chrono>
 #include <strategies/allreduce_summation.h>
 #include <strategies/BaselineSummation.h>
-#include "strategies/binary_tree.hpp"
-#include "io.hpp"
-#include "util.hpp"
+#include <strategies/binary_tree.hpp>
+#include <cxxopts.hpp>
+#include <io.hpp>
+#include <util.hpp>
 
 using namespace std;
 
 extern void attach_debugger(bool condition);
 
-int repetitions = 1;
 
 int c_rank, c_size;
 
@@ -62,24 +63,47 @@ enum SummationStrategies parse_mode_arg(string arg) {
 
 
 int main(int argc, char **argv) {
-
-    if (argc < 3 || string(argv[1]) == "--help") {
-        cerr << "Usage: " << argv[0] << " <psllh> [--allreduce|--baseline|--tree] [repetitions]" << endl;
-        return -1;
-    }
-
-    if (argc == 4) {
-        repetitions = std::atoi(argv[3]);
-    }
-
-    if (repetitions < 0) {
-        cerr << "Error: repetitions must be positive number" << endl;
-        return -1;
-    }
-
-    SummationStrategies strategy_type = parse_mode_arg(string(argv[2]));
-
     MPI_Init(&argc, &argv);
+    cxxopts::Options options("BinomialAllReduce", "Compute a sum of distributed double values");
+
+    constexpr unsigned long MAX_REPETITIONS = std::numeric_limits<unsigned long>::max();
+    options.add_options()
+        ("allreduce", "Use MPI_Allreduce to compute the sum", cxxopts::value<bool>()->default_value("false"))
+        ("baseline", "Gather numbers on a single rank and use std::accumulate", cxxopts::value<bool>()->default_value("false"))
+        ("tree", "Use the distributed binary tree scheme to compute the sum", cxxopts::value<bool>()->default_value("true"))
+        ("f,file", "File name of the binary psllh file", cxxopts::value<string>())
+        ("r,repetitions", "Repeat the calculation at most n times", cxxopts::value<unsigned long>()->default_value(to_string(MAX_REPETITIONS)))
+        ("d,duration", "Run the calculation for at least n seconds.", cxxopts::value<double>()->default_value("0"))
+        ("h,help", "Display this help message", cxxopts::value<bool>()->default_value("false"));
+
+    cxxopts::ParseResult result;
+    try {
+        result = options.parse(argc, argv);
+    } catch (cxxopts::OptionException e) {
+        cerr << e.what() << endl;
+        cout << options.help() << endl;
+        return -1;
+    }
+
+    if (result["help"].as<bool>()) {
+        cout << options.help() << endl;
+        return 0;
+    }
+
+    enum SummationStrategies strategy_type;
+    if (result["allreduce"].as<bool>()) {
+        strategy_type = ALLREDUCE;
+    } else if (result["baseline"].as<bool>()) {
+        strategy_type = BASELINE;
+    } else if (result["tree"].as<bool>()) {
+        strategy_type = TREE;
+    } else {
+        cerr << "Must specify at least one of --allreduce, --baseline or --tree!" << endl;
+        cout << options.help() << endl;
+        return -1;
+    }
+
+    string filename(result["file"].as<string>());
 
 
     MPI_Comm_rank(MPI_COMM_WORLD, &c_rank);
@@ -88,8 +112,6 @@ int main(int argc, char **argv) {
     vector<double> summands;
     vector<int> summands_per_rank;
     if (c_rank == 0) {
-
-        string filename(argv[1]);
         if (filename.ends_with("binpsllh")) {
             summands = IO::read_binpsllh(filename);
         } else {
@@ -121,43 +143,51 @@ int main(int argc, char **argv) {
             break;
     }
 
-
-
     strategy->distribute(summands);
 
-    double result;
+    double sum;
+    double totalDuration = 0.0;
 
     // Duration of the accumulate operation in nanoseconds
     std::vector<double> timings;
-    timings.reserve(repetitions);
 
-    for(int i = 0; i < repetitions; i++) {
+    const auto repetitions = result["repetitions"].as<unsigned long int>();
+    unsigned long int i = 0;
+    const auto maxDuration = result["duration"].as<double>() * 1e9; // in nanoseconds
+
+    bool keepCalculating = true;
+
+    while (keepCalculating) {
         // perform the actual calculation
+        MPI_Barrier(MPI_COMM_WORLD);
         auto timestamp_before = std::chrono::high_resolution_clock::now();
-        result = strategy->accumulate();
+        sum = strategy->accumulate();
         auto timestamp_after = std::chrono::high_resolution_clock::now();
 
-        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>
-            (timestamp_after - timestamp_before);
-        timings.push_back(duration.count());
-        MPI_Barrier(MPI_COMM_WORLD);
+        if (c_rank == 0) {
+            auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>
+                (timestamp_after - timestamp_before);
+            timings.push_back(duration.count());
+            totalDuration += duration.count();
+
+            if (totalDuration > maxDuration || i++ == repetitions) {
+                keepCalculating = false;
+            }
+        }
+
+        MPI_Bcast(&keepCalculating, 1, MPI_BYTE, 0, MPI_COMM_WORLD);
+
     }
 
-#ifdef REPORT_TIMINGS
-    cout << "Timings";
-    for (auto t : timings)
-        cout << " " << t;
-    cout << endl;
-#endif
-
     if (c_rank == 0 && repetitions != 0) {
-        output_result(result);
+        output_result(sum);
 
         // Calculate and output timing information
         auto avg = Util::average(timings);
         auto stddev = Util::stddev(timings);
         cout << "avg=" << avg << endl;
         cout << "stddev=" << stddev << endl;
+        cout << "repetitions=" << i << endl;
     }
 
     MPI_Finalize();

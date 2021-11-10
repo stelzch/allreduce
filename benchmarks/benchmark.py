@@ -7,8 +7,7 @@ import re
 datafiles = glob.glob("data/*")
 cluster_sizes = [os.cpu_count()]
 modes = ["--tree", "--allreduce", "--baseline"]
-time_per_summand = [1.017e-10, 7.858e-12, 9.93e-9]
-expected_time_per_run = 30 # seconds for each benchmark execution
+expected_time_per_run = 3 # seconds for each benchmark execution
 
 os.remove('benchmarks/results.db')
 con = sqlite3.connect('benchmarks/results.db')
@@ -50,16 +49,16 @@ for datafile in datafiles:
     for cluster_size in cluster_sizes:
         print(f"\tnp = {cluster_size}")
         last_result = None
-        for mode, expected_time_per_summand in zip(modes, time_per_summand):
-            repetitions = min(2**30, max(1, int(expected_time_per_run / (expected_time_per_summand * n_summands))))
-            print(f"\t\tmode = {mode[2:]}, repetitions = {repetitions}")
-            cmd = f"mpirun -np {cluster_size} ./build/BinomialAllReduce {datafile} {mode} {repetitions}"
+        for mode in modes:
+            print(f"\t\tmode = {mode[2:]}")
+            cmd = f"mpirun -np {cluster_size} ./build/BinomialAllReduce -f {datafile} {mode} -d {expected_time_per_run}"
             print(f"\t\t\t{cmd}")
             r = subprocess.run(cmd, shell=True, capture_output=True)
             r.check_returncode()
             output = r.stdout.decode("utf-8")
             time = grep_number("avg", output)
             stddev = grep_number("stddev", output)
+            repetitions = grep_number("repetitions", output)
             result = grep_number("sum", output)
 
             if last_result is not None:

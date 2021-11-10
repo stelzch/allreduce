@@ -7,7 +7,8 @@ import re
 datafiles = glob.glob("data/*")
 cluster_sizes = [os.cpu_count()]
 modes = ["--tree", "--allreduce", "--baseline"]
-program_repetitions = 50
+time_per_summand = [1.017e-10, 7.858e-12, 9.93e-9]
+expected_time_per_run = 30 # seconds for each benchmark execution
 
 os.remove('benchmarks/results.db')
 con = sqlite3.connect('benchmarks/results.db')
@@ -16,9 +17,12 @@ cur.execute("""CREATE TABLE results (
     datafile TEXT,
     n_summands INTEGER,
     cluster_size INTEGER,
+    repetitions INTEGER,
+    date TEXT,
     mode TEXT,
     time_ns REAL,
-    stddev REAL);
+    stddev REAL,
+    output TEXT);
 """)
 
 def grep_number(name, string):
@@ -46,10 +50,11 @@ for datafile in datafiles:
     for cluster_size in cluster_sizes:
         print(f"\tnp = {cluster_size}")
         last_result = None
-        for mode in modes:
-            print(f"\t\tmode = {mode[2:]}")
-            repetitions = program_repetitions * 1_000 if n_summands < 2**16 else program_repetitions
-            cmd = f"mpirun -np {cluster_size} ./build/BinomialAllReduce {datafile} {mode} {program_repetitions}"
+        for mode, expected_time_per_summand in zip(modes, time_per_summand):
+            repetitions = min(2**30, max(1, int(expected_time_per_run / (expected_time_per_summand * n_summands))))
+            print(f"\t\tmode = {mode[2:]}, repetitions = {repetitions}")
+            cmd = f"mpirun -np {cluster_size} ./build/BinomialAllReduce {datafile} {mode} {repetitions}"
+            print(f"\t\t\t{cmd}")
             r = subprocess.run(cmd, shell=True, capture_output=True)
             r.check_returncode()
             output = r.stdout.decode("utf-8")
@@ -63,8 +68,8 @@ for datafile in datafiles:
                     print(f"\t\tLarge deviation to previous run detected: {deviation}")
             last_result = result
 
-            cur.execute('INSERT INTO results VALUES (?, ?, ?, ?, ?, ?)',
-                    (datafile, n_summands, cluster_size, mode[2:], time, stddev))
+            cur.execute('INSERT INTO results VALUES (?, ?, ?, ?, datetime(), ?, ?, ?, ?)',
+                    (datafile, n_summands, cluster_size, repetitions, mode[2:], time, stddev, output))
             con.commit()
 
 con.close()

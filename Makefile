@@ -1,5 +1,5 @@
 MPICXX=mpic++
-CXXFLAGS=-std=c++2a -Wall -Wextra -ggdb -O3
+CXXFLAGS=-std=c++2a -Wall -ggdb -O3
 
 all: BinomialAllReduce
 BinomialAllReduce:

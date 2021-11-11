@@ -25,17 +25,17 @@ double Util::endTimer() {
 }
 
 double Util::average(const vector<double> &v) {
-    return std::accumulate(v.begin(), v.end(), 0.0) / v.size();
+    return std::accumulate(v.begin(), v.end(), 0.0) / (double) v.size();
 }
 
 double Util::stddev(const vector<double> &v) {
     const double avg = Util::average(v);
     double accumulator = 0.0;
 
-    for (double x : v)
+    for (const double x : v)
         accumulator += pow(x - avg, 2.0);
 
-    return sqrt(accumulator / v.size());
+    return sqrt(accumulator / (double) v.size());
 }
 
 void Util::attach_debugger(bool condition) {

@@ -28,7 +28,7 @@ BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
 #endif
 }
 
-uint64_t BinaryTreeSummation::parent(uint64_t i) const {
+const uint64_t BinaryTreeSummation::parent(const uint64_t i) {
     assert(i != 0);
 
     // clear least significand set bit

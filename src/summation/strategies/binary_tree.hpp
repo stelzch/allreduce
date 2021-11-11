@@ -8,7 +8,7 @@ class BinaryTreeSummation : public SummationStrategy {
 public:
     BinaryTreeSummation(uint64_t rank, vector<int> &n_summands);
 
-    uint64_t parent(uint64_t i) const;
+    static const uint64_t parent(const uint64_t i);
 
     bool isLocal(uint64_t index) const;
 

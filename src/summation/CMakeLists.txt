@@ -4,6 +4,7 @@ add_library(Summation strategies/summation_strategy.cpp
                         strategies/baseline_summation.cpp
                         io.cpp
                         util.cpp
+                        distribution.cpp
 )
 target_include_directories(Summation PUBLIC .)
 target_link_libraries(Summation PUBLIC MPI::MPI_C MPI::MPI_CXX)

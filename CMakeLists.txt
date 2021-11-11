@@ -10,6 +10,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 find_package(MPI REQUIRED)
 include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 
+# Enable optimizations
+add_compile_options(-Wall -O3 -ggdb)
+
+# Parts of the project
 add_subdirectory(src)
 
 if(BUILD_TESTS)

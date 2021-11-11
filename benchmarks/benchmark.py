@@ -4,6 +4,7 @@ import subprocess
 import glob
 import re
 
+executable = "./build/src/RADTree"
 datafiles = glob.glob("data/*")
 cluster_sizes = [os.cpu_count()]
 modes = ["--tree", "--allreduce", "--baseline"]
@@ -51,7 +52,7 @@ for datafile in datafiles:
         last_result = None
         for mode in modes:
             print(f"\t\tmode = {mode[2:]}")
-            cmd = f"mpirun -np {cluster_size} ./build/BinomialAllReduce -f {datafile} {mode} -d {expected_time_per_run}"
+            cmd = f"mpirun -np {cluster_size} {executable} -f {datafile} {mode} -d {expected_time_per_run}"
             print(f"\t\t\t{cmd}")
             r = subprocess.run(cmd, shell=True, capture_output=True)
             r.check_returncode()

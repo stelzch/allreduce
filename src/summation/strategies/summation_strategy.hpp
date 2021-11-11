@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SUMMATION_STRATEGY_HPP_
+#define SUMMATION_STRATEGY_HPP_
 
 #include <cstdint>
 #include <vector>
@@ -35,3 +36,5 @@ protected:
     vector<double> summands;
     const int ROOT_RANK = 0;
 };
+
+#endif

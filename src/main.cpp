@@ -1,20 +1,20 @@
-#include <limits>
-#include <numeric>
-#include <iostream>
-#include <mpi.h>
-#include <vector>
 #include <cassert>
-#include <cmath>
-#include <memory>
-#include <cmath>
-#include <string>
 #include <chrono>
-#include <strategies/allreduce_summation.hpp>
-#include <strategies/baseline_summation.cpp>
-#include <strategies/binary_tree.hpp>
+#include <cmath>
+#include <cmath>
 #include <cxxopts.hpp>
 #include <io.hpp>
+#include <iostream>
+#include <limits>
+#include <memory>
+#include <mpi.h>
+#include <numeric>
+#include <strategies/allreduce_summation.hpp>
+#include <strategies/baseline_summation.hpp>
+#include <strategies/binary_tree.hpp>
+#include <string>
 #include <util.hpp>
+#include <vector>
 
 using namespace std;
 
@@ -64,7 +64,7 @@ enum SummationStrategies parse_mode_arg(string arg) {
 
 int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
-    cxxopts::Options options("BinomialAllReduce", "Compute a sum of distributed double values");
+    cxxopts::Options options("RADTree", "Compute a sum of distributed double values");
 
     constexpr unsigned long MAX_REPETITIONS = std::numeric_limits<unsigned long>::max();
     options.add_options()

@@ -2,7 +2,7 @@
 // Created by christoph on 28.10.21.
 //
 
-#include "baseline_summation.cpp"
+#include "baseline_summation.hpp"
 #include <mpi.h>
 #include <numeric>
 

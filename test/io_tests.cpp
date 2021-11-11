@@ -45,8 +45,8 @@ TEST(IOTests, BinPsllhComparison) {
 }
 
 TEST(IOTests, Prim) {
-    auto text_variant = IO::read_psllh("/home/christoph/Studium/Thesis/warmups/data/prim.psllh");
-    auto binary_variant = IO::read_binpsllh("/home/christoph/Studium/Thesis/warmups/data/prim.binpsllh");
+    auto text_variant = IO::read_psllh(get_file_path("prim.psllh"));
+    auto binary_variant = IO::read_binpsllh(get_file_path("prim.binpsllh"));
 
     EXPECT_EQ(text_variant.size(), binary_variant.size());
 

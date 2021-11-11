@@ -9,8 +9,8 @@
 #include <cmath>
 #include <string>
 #include <chrono>
-#include <strategies/allreduce_summation.h>
-#include <strategies/BaselineSummation.h>
+#include <strategies/allreduce_summation.hpp>
+#include <strategies/baseline_summation.cpp>
 #include <strategies/binary_tree.hpp>
 #include <cxxopts.hpp>
 #include <io.hpp>

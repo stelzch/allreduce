@@ -2,7 +2,7 @@
 // Created by christoph on 28.10.21.
 //
 
-#include "allreduce_summation.h"
+#include "allreduce_summation.hpp"
 #include <numeric>
 #include <mpi.h>
 

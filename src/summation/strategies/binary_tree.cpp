@@ -9,6 +9,7 @@
 #include <cmath>
 #include <unistd.h>
 #include <functional>
+#include <chrono>
 #include <io.hpp>
 #include "binary_tree.hpp"
 
@@ -19,13 +20,20 @@ using namespace std::string_literals;
 
 BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
     : SummationStrategy(rank, n_summands),
+      acquisitionDuration(std::chrono::duration<double>::zero()),
+      acquisitionCount(0L),
       size(n_summands[rank]),
       begin (startIndex[rank]),
       end (begin +  size),
-      rankIntersectingSummands(calculateRankIntersectingSummands()){
+      rankIntersectingSummands(calculateRankIntersectingSummands()) {
 #ifdef DEBUG_OUTPUT_TREE
     printf("Rank %lu has %lu summands, starting from index %lu to %lu\n", rank, size, begin, end);
 #endif
+}
+
+BinaryTreeSummation::~BinaryTreeSummation() {
+    cout << "Rank " << rank << " avg. acquisition time: "
+        << acquisitionTime() / acquisitionCount << "ns\n";
 }
 
 const uint64_t BinaryTreeSummation::parent(const uint64_t i) {
@@ -111,7 +119,13 @@ double BinaryTreeSummation::accumulate(void) {
 }
 
 double BinaryTreeSummation::accumulate(uint64_t index) {
+    auto t1 = std::chrono::high_resolution_clock::now();
+
     double accumulator = acquireNumber(index);
+
+    auto t2 = std::chrono::high_resolution_clock::now();
+    acquisitionDuration += t2 - t1;
+    acquisitionCount++;
 
 #ifdef DEBUG_OUTPUT_TREE
     if (isLocal(index))
@@ -144,4 +158,8 @@ double BinaryTreeSummation::accumulate(uint64_t index) {
     }
 
     return accumulator;
+}
+
+const double BinaryTreeSummation::acquisitionTime(void) const {
+    return std::chrono::duration_cast<std::chrono::nanoseconds> (acquisitionDuration).count();
 }

@@ -12,8 +12,10 @@
 #include <strategies/allreduce_summation.hpp>
 #include <strategies/baseline_summation.hpp>
 #include <strategies/binary_tree.hpp>
+#include <distribution.hpp>
 #include <string>
 #include <util.hpp>
+#include <timer.hpp>
 #include <vector>
 
 using namespace std;
@@ -21,7 +23,7 @@ using namespace std;
 extern void attach_debugger(bool condition);
 
 
-int c_rank, c_size;
+int c_rank = -1, c_size = -1;
 
 void output_result(double sum) {
     printf("sum=%.64f\n", sum);
@@ -62,8 +64,18 @@ enum SummationStrategies parse_mode_arg(string arg) {
 
 
 
+void cli_error(const cxxopts::Options options, const string error) {
+    if (c_rank != 0) return;
+    cerr << "[ERROR] " << error << "\n\n";
+    cout << options.help() << "\n";
+}
+
+
 int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &c_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &c_size);
+
     cxxopts::Options options("RADTree", "Compute a sum of distributed double values");
 
     constexpr unsigned long MAX_REPETITIONS = std::numeric_limits<unsigned long>::max();
@@ -74,14 +86,18 @@ int main(int argc, char **argv) {
         ("f,file", "File name of the binary psllh file", cxxopts::value<string>())
         ("r,repetitions", "Repeat the calculation at most n times", cxxopts::value<unsigned long>()->default_value(to_string(MAX_REPETITIONS)))
         ("d,duration", "Run the calculation for at least n seconds.", cxxopts::value<double>()->default_value("0"))
+        ("c,distribution", "Number distribution, can be even or optimized,<VARIANCE>", cxxopts::value<string>()->default_value("even"))
+        ("v,verbose", "Be more verbose about calculations", cxxopts::value<bool>()->default_value("false"))
         ("h,help", "Display this help message", cxxopts::value<bool>()->default_value("false"));
 
     cxxopts::ParseResult result;
     try {
         result = options.parse(argc, argv);
     } catch (cxxopts::OptionException e) {
-        cerr << e.what() << endl;
-        cout << options.help() << endl;
+        if (c_rank == 0) {
+            cerr << e.what() << endl;
+            cout << options.help() << endl;
+        }
         return -1;
     }
 
@@ -98,16 +114,20 @@ int main(int argc, char **argv) {
     } else if (result["tree"].as<bool>()) {
         strategy_type = TREE;
     } else {
-        cerr << "Must specify at least one of --allreduce, --baseline or --tree!" << endl;
-        cout << options.help() << endl;
+        cli_error(options, "Must specify at least one of --allreduce, --baseline or --tree!");
         return -1;
     }
 
-    string filename(result["file"].as<string>());
+    string distrib_mode = result["distribution"].as<string>();
+    string filename;
+    try {
+        filename = result["file"].as<string>();
+    } catch(cxxopts::option_has_no_value_exception) {
+        cli_error(options, "Must specify datafile path with -f");
+        return -1;
+    }
+    bool verbose = result["verbose"].as<bool>();
 
-
-    MPI_Comm_rank(MPI_COMM_WORLD, &c_rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &c_size);
 
     vector<double> summands;
     vector<int> summands_per_rank;
@@ -118,16 +138,43 @@ int main(int argc, char **argv) {
             summands = IO::read_psllh(filename);
         }
         assert(static_cast<long unsigned>(c_size) < summands.size());
-        int n_summands_per_rank = floor(summands.size() / c_size);
-        int remaining = summands.size() - n_summands_per_rank * c_size;
         cout << "[IO] Loaded " << summands.size() << " summands from " << filename << endl;
 
-        for (uint64_t i = 0; i < static_cast<long unsigned>(c_size); i++) {
-            summands_per_rank.push_back(n_summands_per_rank);
+        Distribution d(0,0);
+        bool initialized = false;
+        if (distrib_mode == "even") {
+            d = Distribution::even(summands.size(), c_size);
+            initialized = true;
+        } else if (distrib_mode.starts_with("optimized,")) {
+            double variance = std::atof(distrib_mode.substr(10).c_str());
+            
+            if (variance <= 0.0 || variance > 1.0) {
+                cli_error(options, "Variance of optimized distribution mode must be from (0, 1]");
+            }
+
+            d = Distribution::lsb_cleared(summands.size(), c_size, variance);
+            initialized = true;
+        } else {
+            cli_error(options, "Invalid distribution mode: " + distrib_mode);
         }
-        summands_per_rank[0] += remaining;
+
+        if(initialized) {
+            summands_per_rank.resize(c_size);
+            for (int i = 0; i < c_size; i++)
+                summands_per_rank[i] = static_cast<int>(d.nSummands[i]);
+
+        }
+
+        if (verbose) {
+            d.printDistribution();
+            d.printScore();
+        }
     }
+
     broadcast_vector(summands_per_rank, 0);
+    if (summands_per_rank.size() == 0) {
+        return -1;
+    }
 
     std::unique_ptr<SummationStrategy> strategy;
 
@@ -178,6 +225,7 @@ int main(int argc, char **argv) {
         MPI_Bcast(&keepCalculating, 1, MPI_BYTE, 0, MPI_COMM_WORLD);
 
     }
+
 
     if (c_rank == 0 && repetitions != 0) {
         output_result(sum);

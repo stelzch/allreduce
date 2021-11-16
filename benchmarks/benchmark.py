@@ -3,27 +3,48 @@ import sqlite3
 import subprocess
 import glob
 import re
+import platform
 
 executable = "./build/src/RADTree"
 datafiles = glob.glob("data/*")
-cluster_sizes = [os.cpu_count()]
+cluster_size = os.cpu_count() // 2
 modes = ["--tree", "--allreduce", "--baseline"]
 expected_time_per_run = 3 # seconds for each benchmark execution
 
-os.remove('benchmarks/results.db')
 con = sqlite3.connect('benchmarks/results.db')
 cur = con.cursor()
-cur.execute("""CREATE TABLE results (
+cur.execute("""
+CREATE TABLE IF NOT EXISTS runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT,
+    hostname TEXT,
+    revision TEXT,
+    cluster_size INTEGER
+);
+""")
+cur.execute("""
+CREATE TABLE IF NOT EXISTS results (
+    run_id INTEGER,
     datafile TEXT,
     n_summands INTEGER,
-    cluster_size INTEGER,
     repetitions INTEGER,
-    date TEXT,
     mode TEXT,
     time_ns REAL,
     stddev REAL,
-    output TEXT);
+    output TEXT,
+    FOREIGN KEY(run_id) REFERENCES runs(id) ON DELETE CASCADE
+);
 """)
+
+git_result = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True)
+revision = str(git_result.stdout, 'utf-8') if git_result.returncode == 0 else "NONE"
+print("REVISION: ", revision)
+
+cur.execute("INSERT INTO runs(date, hostname, revision, cluster_size) VALUES (datetime(), ?, ?, ?)",
+        (platform.node(), revision.strip(), cluster_size))
+run_id = cur.execute("SELECT MAX(ROWID) FROM runs").fetchall()[0][0]
+print(run_id)
+
 
 def grep_number(name, string):
     regexp = f"^{name}=([+\-0-9.e]+)$"
@@ -47,29 +68,28 @@ for datafile in datafiles:
         n_summands = len(f.readlines()) - 1
         f.close()
 
-    for cluster_size in cluster_sizes:
-        print(f"\tnp = {cluster_size}")
-        last_result = None
-        for mode in modes:
-            print(f"\t\tmode = {mode[2:]}")
-            cmd = f"mpirun -np {cluster_size} {executable} -f {datafile} {mode} -d {expected_time_per_run}"
-            print(f"\t\t\t{cmd}")
-            r = subprocess.run(cmd, shell=True, capture_output=True)
-            r.check_returncode()
-            output = r.stdout.decode("utf-8")
-            time = grep_number("avg", output)
-            stddev = grep_number("stddev", output)
-            repetitions = grep_number("repetitions", output)
-            result = grep_number("sum", output)
+    last_result = None
+    for mode in modes:
+        print(f"\t\tmode = {mode[2:]}")
+        cmd = f"mpirun -np {cluster_size} {executable} -f {datafile} {mode} -d {expected_time_per_run}"
+        print(f"\t\t\t{cmd}")
+        r = subprocess.run(cmd, shell=True, capture_output=True)
+        r.check_returncode()
+        output = r.stdout.decode("utf-8")
+        time = grep_number("avg", output)
+        stddev = grep_number("stddev", output)
+        repetitions = grep_number("repetitions", output)
+        result = grep_number("sum", output)
 
-            if last_result is not None:
-                deviation = abs(last_result - result)
-                if deviation > 1e-6:
-                    print(f"\t\tLarge deviation to previous run detected: {deviation}")
-            last_result = result
+        if last_result is not None:
+            deviation = abs(last_result - result)
+            if deviation > 1e-6:
+                print(f"\t\tLarge deviation to previous run detected: {deviation}")
+        last_result = result
 
-            cur.execute('INSERT INTO results VALUES (?, ?, ?, ?, datetime(), ?, ?, ?, ?)',
-                    (datafile, n_summands, cluster_size, repetitions, mode[2:], time, stddev, output))
-            con.commit()
+        cur.execute('INSERT INTO results(run_id, datafile, n_summands, repetitions, mode, time_ns, stddev, output)' \
+                'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                (run_id, datafile, n_summands, repetitions, mode[2:], time, stddev, output))
+        con.commit()
 
 con.close()

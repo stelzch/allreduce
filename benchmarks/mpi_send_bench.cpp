@@ -16,14 +16,14 @@ int main(int argc, char **argv) {
         cout << "Usage: " << argv[0] << " <iterations>" << endl;
         return -1;
     }
-    const auto iterations = atoi(argv[1]);
+    const long int iterations = atoi(argv[1]);
 
 
     auto t1 = chrono::high_resolution_clock::now();
     double num = 2.0;
     for (auto i = 0; i < iterations; i++) {
         if (c_rank == 0) {
-            num += 1;
+            num += 1.0;
             MPI_Send(&num, 1, MPI_DOUBLE, 1, 0, MPI_COMM_WORLD);
         } else if(c_rank == 1) {
             MPI_Recv(&num, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, nullptr);
@@ -33,7 +33,8 @@ int main(int argc, char **argv) {
     auto t2 = chrono::high_resolution_clock::now();
 
     chrono::duration<double, nano> dur = t2 - t1;
-    cout << "MPI_Send&Recv took on average " << dur.count() / iterations<< "ns" << endl;
+    double avg = dur.count() / (double) iterations;
+    cout << "MPI_Send&Recv took on average " << avg << "ns" << endl;
 
 
 

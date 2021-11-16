@@ -32,8 +32,10 @@ BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
 }
 
 BinaryTreeSummation::~BinaryTreeSummation() {
+#ifdef ENABLE_INSTRUMENTATION
     cout << "Rank " << rank << " avg. acquisition time: "
-        << acquisitionTime() / acquisitionCount << "ns\n";
+        << acquisitionTime() / acquisitionCount << "  ns\n";
+#endif
 }
 
 const uint64_t BinaryTreeSummation::parent(const uint64_t i) {
@@ -119,13 +121,17 @@ double BinaryTreeSummation::accumulate(void) {
 }
 
 double BinaryTreeSummation::accumulate(uint64_t index) {
+#ifdef ENABLE_INSTRUMENTATION
     auto t1 = std::chrono::high_resolution_clock::now();
+#endif
 
     double accumulator = acquireNumber(index);
 
+#ifdef ENABLE_INSTRUMENTATION
     auto t2 = std::chrono::high_resolution_clock::now();
     acquisitionDuration += t2 - t1;
     acquisitionCount++;
+#endif
 
 #ifdef DEBUG_OUTPUT_TREE
     if (isLocal(index))

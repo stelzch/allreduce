@@ -6,6 +6,10 @@ add_library(Summation strategies/summation_strategy.cpp
                         util.cpp
                         distribution.cpp
 )
+if(ENABLE_INSTRUMENTATION)
+    add_definitions(-DENABLE_INSTRUMENTATION)
+endif()
+
 target_include_directories(Summation PRIVATE ../../dependencies)
 target_include_directories(Summation PUBLIC .)
 target_link_libraries(Summation PUBLIC MPI::MPI_C MPI::MPI_CXX)

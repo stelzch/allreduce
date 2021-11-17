@@ -182,6 +182,12 @@ vector<uint64_t> BinaryTreeSummation::calculateRankIntersectingSummands(void) co
     */
 double BinaryTreeSummation::accumulate(void) {
     for (auto summand : rankIntersectingSummands) {
+        if (subtree_size(summand) > 64) {
+            // If we are about to do some considerable amount of work, make sure
+            // the send buffer is empty so noone is waiting for our results
+            messageBuffer.flush();
+        }
+
         double result = accumulate(summand);
 
         messageBuffer.put(rankFromIndex(parent(summand)), summand, result);
@@ -252,6 +258,10 @@ const double BinaryTreeSummation::acquisitionTime(void) const {
 
 const uint64_t BinaryTreeSummation::largest_child_index(const uint64_t index) const {
     return index | (index - 1);
+}
+
+const uint64_t BinaryTreeSummation::subtree_size(const uint64_t index) const {
+    return largest_child_index(index) + 1 - index;
 }
 
 const bool BinaryTreeSummation::is_local_subtree_of_size(const uint64_t expectedSubtreeSize, const uint64_t i) const {

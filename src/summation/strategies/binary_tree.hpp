@@ -68,6 +68,7 @@ protected:
     double accumulate(uint64_t index);
 
     const uint64_t largest_child_index(const uint64_t index) const;
+    const uint64_t subtree_size(const uint64_t index) const;
 
     /** Figure out if the parts that make up a certain index are all local and form a subtree
      * of a specifc size */

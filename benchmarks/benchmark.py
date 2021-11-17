@@ -82,7 +82,7 @@ for datafile in datafiles:
     last_result = None
     for mode in modes:
         print(f"\t\tmode = {mode[2:]}")
-        cmd = f"mpirun --use-hw-thread-cpus -np {cluster_size} {executable} -f {datafile} {mode} -d {expected_time_per_run} {flags}"
+        cmd = f"mpirun --use-hwthread-cpus -np {cluster_size} {executable} -f {datafile} {mode} -d {expected_time_per_run} {flags}"
         print(f"\t\t\t{cmd}")
         r = subprocess.run(cmd, shell=True, capture_output=True)
         r.check_returncode()

@@ -216,7 +216,6 @@ int main(int argc, char **argv) {
     const auto maxDuration = result["duration"].as<double>() * 1e9; // in nanoseconds
 
     bool keepCalculating = true;
-    Util::attach_debugger(c_rank == 7);
 
     while (keepCalculating) {
         // perform the actual calculation

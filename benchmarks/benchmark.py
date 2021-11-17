@@ -4,12 +4,22 @@ import subprocess
 import glob
 import re
 import platform
+import argparse
 
-executable = "./build/src/RADTree"
+parser = argparse.ArgumentParser("Run benchmark")
+parser.add_argument("-e", "--executable", default="./build/src/RADTree", type=str)
+parser.add_argument("-np", "--cluster_size", default=os.cpu_count(), type=int)
+parser.add_argument("-t", "--time_per_run", default = 30, type=float, help="Time to spend on each iteration of the benchmark")
+parser.add_argument("-f", "--flags", default="", type=str, help="Additional flags to pass to the executable under test")
+parser.add_argument("-d", "--description", default="", type=str, help="Annotation that will be put in result DB")
+
+args = parser.parse_args()
+executable = args.executable
 datafiles = glob.glob("data/*")
-cluster_size = os.cpu_count() // 2
+cluster_size = args.cluster_size
 modes = ["--tree", "--allreduce", "--baseline"]
-expected_time_per_run = 3 # seconds for each benchmark execution
+expected_time_per_run = args.time_per_run # seconds for each benchmark execution
+flags = args.flags
 
 con = sqlite3.connect('benchmarks/results.db')
 cur = con.cursor()
@@ -19,7 +29,9 @@ CREATE TABLE IF NOT EXISTS runs (
     date TEXT,
     hostname TEXT,
     revision TEXT,
-    cluster_size INTEGER
+    cluster_size INTEGER,
+    description TEXT,
+    flags TEXT
 );
 """)
 cur.execute("""
@@ -40,10 +52,9 @@ git_result = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True)
 revision = str(git_result.stdout, 'utf-8') if git_result.returncode == 0 else "NONE"
 print("REVISION: ", revision)
 
-cur.execute("INSERT INTO runs(date, hostname, revision, cluster_size) VALUES (datetime(), ?, ?, ?)",
-        (platform.node(), revision.strip(), cluster_size))
+cur.execute("INSERT INTO runs(date, hostname, revision, cluster_size, description, flags) VALUES (datetime(), ?, ?, ?, ?, ?)",
+        (platform.node(), revision.strip(), cluster_size, args.description, flags))
 run_id = cur.execute("SELECT MAX(ROWID) FROM runs").fetchall()[0][0]
-print(run_id)
 
 
 def grep_number(name, string):
@@ -71,7 +82,7 @@ for datafile in datafiles:
     last_result = None
     for mode in modes:
         print(f"\t\tmode = {mode[2:]}")
-        cmd = f"mpirun -np {cluster_size} {executable} -f {datafile} {mode} -d {expected_time_per_run}"
+        cmd = f"mpirun --use-hw-thread-cpus -np {cluster_size} {executable} -f {datafile} {mode} -d {expected_time_per_run} {flags}"
         print(f"\t\t\t{cmd}")
         r = subprocess.run(cmd, shell=True, capture_output=True)
         r.check_returncode()

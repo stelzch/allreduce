@@ -97,15 +97,41 @@ const Distribution Distribution::lsb_cleared(const uint64_t n, const uint64_t ra
     return d;
 }
 
+const Distribution Distribution::optimal(const uint64_t n, const uint64_t ranks) {
+    Distribution candidate(1,1);
+    double score = INFINITY;
+    double candidateVariance = 1.0;
+    bool hasBeenDescending = false;
+
+    for (double testedVariance = 1.0; testedVariance > 0.0; testedVariance -= 0.001) {
+        auto generated = Distribution::lsb_cleared(n, ranks, testedVariance);
+
+        if (generated.score() < score) {
+            candidate = generated;
+            score = generated.score();
+            candidateVariance = testedVariance;
+            hasBeenDescending = true;
+        }
+
+        if (generated.score() > score && hasBeenDescending) {
+            // Reached saddle point, do not optimize further
+            break;
+        }
+    }
+
+    cout << "Best optimization with variance " << candidateVariance << endl;
+
+    return candidate;
+}
+
 const uint64_t Distribution::rankIntersectionCount() const {
     if (rankIntersectionCountValid) {
         return _rankIntersectionCount;
     }
 
     uint64_t totalRankIntersections = 0;
-    for (int i = 1; i < startIndices.size(); i++) {
+    for (uint64_t i = 1; i < startIndices.size(); i++) {
         const uint64_t startIndex = startIndices[i];
-        const uint64_t previousStartIndex = startIndices[i - 1];
 
         uint64_t rankIntersections = 0;
         for (uint64_t numberIndex = startIndex; numberIndex < startIndex + nSummands[i]; numberIndex++) {
@@ -122,8 +148,8 @@ const uint64_t Distribution::rankIntersectionCount() const {
 }
 
 const double Distribution::score() const {
-    const double t_send = 281e-9;
-    const double t_doubleadd = 4.15e-9;
+    const double t_send = 110e-9;
+    const double t_doubleadd = 2.44e-9;
 
     return t_send * rankIntersectionCount() + // communication
         *std::max_element(nSummands.begin(), nSummands.end()) * t_doubleadd;  // calculation

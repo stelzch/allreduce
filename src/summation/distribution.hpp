@@ -33,6 +33,8 @@ struct Distribution {
 
     static const Distribution lsb_cleared(const uint64_t n, const uint64_t ranks, const float variance);
 
+    static const Distribution optimal(const uint64_t n, const uint64_t ranks);
+
     const uint64_t rankIntersectionCount() const;
 
     const double score() const;

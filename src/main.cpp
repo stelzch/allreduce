@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
         ("f,file", "File name of the binary psllh file", cxxopts::value<string>())
         ("r,repetitions", "Repeat the calculation at most n times", cxxopts::value<unsigned long>()->default_value(to_string(MAX_REPETITIONS)))
         ("d,duration", "Run the calculation for at least n seconds.", cxxopts::value<double>()->default_value("0"))
-        ("c,distribution", "Number distribution, can be even or optimized,<VARIANCE>", cxxopts::value<string>()->default_value("even"))
+        ("c,distribution", "Number distribution, can be even, optimal or optimized,<VARIANCE>", cxxopts::value<string>()->default_value("even"))
         ("v,verbose", "Be more verbose about calculations", cxxopts::value<bool>()->default_value("false"))
         ("h,help", "Display this help message", cxxopts::value<bool>()->default_value("false"));
 
@@ -144,6 +144,9 @@ int main(int argc, char **argv) {
         bool initialized = false;
         if (distrib_mode == "even") {
             d = Distribution::even(summands.size(), c_size);
+            initialized = true;
+        } else if (distrib_mode == "optimal") {
+            d = Distribution::optimal(summands.size(), c_size);
             initialized = true;
         } else if (distrib_mode.starts_with("optimized,")) {
             double variance = std::atof(distrib_mode.substr(10).c_str());

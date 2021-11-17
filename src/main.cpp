@@ -148,6 +148,16 @@ int main(int argc, char **argv) {
         } else if (distrib_mode == "optimal") {
             d = Distribution::optimal(summands.size(), c_size);
             initialized = true;
+        } else if (distrib_mode.starts_with("manual,")) {
+            d = Distribution::from_string(distrib_mode.substr(7));
+
+            if (d.n != static_cast<uint64_t>(summands.size())
+                    || d.ranks != static_cast<uint64_t>(c_size)) {
+                cli_error(options, "Distribution did not match dataset or cluster");
+            } else {
+                initialized = true;
+            }
+
         } else if (distrib_mode.starts_with("optimized,")) {
             double variance = std::atof(distrib_mode.substr(10).c_str());
             

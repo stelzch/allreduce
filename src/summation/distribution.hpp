@@ -5,10 +5,12 @@
 #ifndef BINOMIALALLREDUCE_DATA_DISTRIBUTION_HPP
 #define BINOMIALALLREDUCE_DATA_DISTRIBUTION_HPP
 
+#include <string>
 #include <vector>
 #include <cstdint>
 
 using std::vector;
+using std::string;
 
 struct Distribution {
     uint64_t n;         // number of summands
@@ -34,6 +36,8 @@ struct Distribution {
     static const Distribution lsb_cleared(const uint64_t n, const uint64_t ranks, const float variance);
 
     static const Distribution optimal(const uint64_t n, const uint64_t ranks);
+
+    static const Distribution from_string(const string description);
 
     const uint64_t rankIntersectionCount() const;
 

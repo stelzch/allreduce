@@ -4,11 +4,17 @@
 #include <cstdint>
 #include <iostream>
 #include <cassert>
+#include <algorithm>
 #include <cmath>
+#include <string>
+#include <numeric>
+#include <sstream>
 
 using std::vector;
 using std::cout;
 using std::endl;
+using std::string;
+using std::stringstream;
 
 Distribution::Distribution(uint64_t n, uint64_t ranks)
         : n(n), ranks(ranks), nSummands(ranks), startIndices(ranks), _rankIntersectionCount(-1) {
@@ -104,6 +110,7 @@ const Distribution Distribution::optimal(const uint64_t n, const uint64_t ranks)
     bool hasBeenDescending = false;
 
     for (double testedVariance = 1.0; testedVariance > 0.0; testedVariance -= 0.001) {
+        cout << testedVariance << endl;
         auto generated = Distribution::lsb_cleared(n, ranks, testedVariance);
 
         if (generated.score() < score) {
@@ -122,6 +129,33 @@ const Distribution Distribution::optimal(const uint64_t n, const uint64_t ranks)
     cout << "Best optimization with variance " << candidateVariance << endl;
 
     return candidate;
+}
+
+const Distribution Distribution::from_string(const string description) {
+    string spec(description);
+    std::replace(spec.begin(), spec.end(), ',', ' ');
+
+    vector<uint64_t> nSummands;
+    stringstream ss(spec);
+    uint64_t mn;
+
+    while (ss >> mn) {
+        nSummands.push_back(mn);
+    }
+
+    const uint64_t n = std::accumulate(nSummands.begin(), nSummands.end(), 0L);
+    const uint64_t ranks = nSummands.size();
+
+    Distribution d(n, ranks);
+
+    uint64_t startIndex = 0;
+    for (uint64_t i = 0; i < ranks; i++) {
+        d.startIndices[i] = startIndex;
+        d.nSummands[i] = nSummands[i];
+        startIndex += nSummands[i];
+    }
+
+    return d;
 }
 
 const uint64_t Distribution::rankIntersectionCount() const {

@@ -19,6 +19,82 @@
 using namespace std;
 using namespace std::string_literals;
 
+const int MESSAGEBUFFER_MPI_TAG = 1;
+
+MessageBuffer::MessageBuffer() : targetRank(-1), inbox() {
+    outbox.reserve(MAX_MESSAGE_LENGTH + 1);
+    buffer.resize(MAX_MESSAGE_LENGTH);
+}
+
+void MessageBuffer::flush() {
+    if (targetRank < 0)
+        return;
+
+    const int messageByteSize = outbox.size() * sizeof(MessageBufferEntry);
+
+    //cout << "Sending to " << targetRank << endl;
+    MPI_Send(static_cast<void *>(&outbox[0]), messageByteSize, MPI_BYTE, targetRank, MESSAGEBUFFER_MPI_TAG, MPI_COMM_WORLD);
+    //cout << " [DONE]" << endl;
+
+    targetRank = -1;
+    outbox.clear();
+}
+
+const void MessageBuffer::receive(const int sourceRank) {
+    MPI_Status status;
+
+    MPI_Recv(static_cast<void *>(&buffer[0]), sizeof(MessageBufferEntry) * MAX_MESSAGE_LENGTH, MPI_BYTE,
+            sourceRank, MESSAGEBUFFER_MPI_TAG, MPI_COMM_WORLD, &status);
+
+    const int receivedEntries = status._ucount / sizeof(MessageBufferEntry);
+
+    for (int i = 0; i < receivedEntries; i++) {
+        MessageBufferEntry entry = buffer[i];
+        inbox[entry.index] = entry.value;
+    }
+}
+
+void MessageBuffer::put(const int targetRank, const uint64_t index, const double value) {
+    if (outbox.size() >= MAX_MESSAGE_LENGTH || this->targetRank != targetRank) {
+        flush();
+    }
+
+    if (this->targetRank == -1) {
+        this->targetRank = targetRank;
+    }
+
+    MessageBufferEntry e;
+    e.index = index;
+    e.value = value;
+    outbox.push_back(e);
+
+    if (outbox.size() == MAX_MESSAGE_LENGTH) flush();
+}
+
+const double MessageBuffer::get(const int sourceRank, const uint64_t index) {
+    // If we have the number in our inbox, directly return it
+    if (inbox.contains(index)) {
+        double result = inbox[index];
+        inbox.erase(index);
+        return result;
+    }
+
+    // If not, we will wait for a message
+    receive(sourceRank);
+
+    //cout << "Waiting for rank " << sourceRank << ", index " << index ;
+
+    // Our computation order should guarantee that the number is contained within
+    // the next package
+    assert(inbox.contains(index));
+
+    //cout << " [RECEIVED]" << endl;
+    double result = inbox[index];
+    inbox.erase(index);
+    return result;
+}
+
+
 BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
     : SummationStrategy(rank, n_summands),
       acquisitionDuration(std::chrono::duration<double>::zero()),
@@ -69,16 +145,14 @@ uint64_t BinaryTreeSummation::rankFromIndex(uint64_t index) const {
     throw logic_error("Number cannot be found on any node");
 }
 
-double BinaryTreeSummation::acquireNumber(uint64_t index) const {
+const double BinaryTreeSummation::acquireNumber(const uint64_t index) {
     if (isLocal(index)) {
         // We have that number locally
         return summands[index - begin];
     }
 
-    uint64_t sourceRank = rankFromIndex(index);
-    double result;
-    MPI_Recv(&result, 1, MPI_DOUBLE,
-            sourceRank, index, MPI_COMM_WORLD, NULL);
+    // Otherwise, receive it
+    const double result = messageBuffer.get(rankFromIndex(index), index);
 
     return result;
 }
@@ -110,16 +184,17 @@ double BinaryTreeSummation::accumulate(void) {
     for (auto summand : rankIntersectingSummands) {
         double result = accumulate(summand);
 
-        // TODO: figure out if this send blocks or not.
-        MPI_Send(&result, 1, MPI_DOUBLE,
-                rankFromIndex(parent(summand)), summand, MPI_COMM_WORLD);
+        messageBuffer.put(rankFromIndex(parent(summand)), summand, result);
     }
+    messageBuffer.flush();
+
     double result = (rank == ROOT_RANK) ? accumulate(0) : 0.0;
     MPI_Bcast(&result, 1, MPI_DOUBLE,
               ROOT_RANK, MPI_COMM_WORLD);
 
     return result;
 }
+
 
 double BinaryTreeSummation::accumulate(uint64_t index) {
 #ifdef ENABLE_INSTRUMENTATION

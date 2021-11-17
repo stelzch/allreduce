@@ -2,8 +2,37 @@
 #include <cstdint>
 #include <vector>
 #include <chrono>
+#include <array>
+#include <map>
 
 using std::vector;
+using std::array;
+using std::map;
+
+const uint8_t MAX_MESSAGE_LENGTH = 4;
+
+struct MessageBufferEntry {
+    uint64_t index;
+    double value;
+};
+
+class MessageBuffer {
+
+public:
+    MessageBuffer();
+    const void receive(const int sourceRank);
+    void flush();
+
+    void put(const int targetRank, const uint64_t index, const double value);
+    const double get(const int sourceRank, const uint64_t index);
+
+protected:
+    array<MessageBufferEntry, MAX_MESSAGE_LENGTH> entries;
+    map<uint64_t, double> inbox;
+    int targetRank;
+    vector<MessageBufferEntry> outbox;
+    vector<MessageBufferEntry> buffer;
+};
 
 class BinaryTreeSummation : public SummationStrategy {
 public:
@@ -18,7 +47,7 @@ public:
     /** Determine which rank has the number with a given index */
     uint64_t rankFromIndex(uint64_t index) const;
 
-    double acquireNumber(uint64_t index) const;
+    const double acquireNumber(const uint64_t index);
 
 
     /* Sum all numbers. Will return the total sum on rank 0
@@ -52,5 +81,6 @@ private:
     std::chrono::duration<double> acquisitionDuration;
     long int acquisitionCount;
 
+    MessageBuffer messageBuffer;
 };
 

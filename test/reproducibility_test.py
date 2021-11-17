@@ -2,15 +2,16 @@ import subprocess
 import multiprocessing
 import re
 import sys
+import glob
 import numpy as np
 from functools import reduce
 
-EXECUTABLE = "./build/BinomialAllReduce"
+EXECUTABLE = "./build/src/RADTree"
 FLOAT_REGEX = re.compile("^(-)?[0-9]+\.[0-9]+$")
 
 
 def run_with_mpi(number_of_ranks, datafile_path, mode):
-    cmd = f"mpirun -np {number_of_ranks} {EXECUTABLE} {datafile_path} {mode}"
+    cmd = f"mpirun -np {number_of_ranks} {EXECUTABLE} -f {datafile_path} {mode}"
     print(f"\tRunning {cmd}")
     result = subprocess.run(
             cmd,
@@ -49,8 +50,8 @@ def check_reproducibility(datafile, mode, reproducibilityExpected):
 
 if __name__ == "__main__":
     retcode = 0
-    for file in ["354.binpsllh", "fusob.psllh", "prim.psllh", "XiD4.psllh"]:
-        datafile = "data/" + file
+    datafiles = glob.glob("data/*")
+    for datafile in datafiles:
         if not check_reproducibility(datafile, "--baseline", True):
             retcode = -1
         if not check_reproducibility(datafile, "--tree", True):

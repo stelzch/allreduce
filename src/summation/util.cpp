@@ -38,7 +38,7 @@ double Util::stddev(const vector<double> &v) {
     return sqrt(accumulator / (double) v.size());
 }
 
-void Util::attach_debugger(bool condition) {
+void __attribute__((optimize("O0"))) Util::attach_debugger(bool condition) {
     if (!condition) return;
     bool attached = false;
 

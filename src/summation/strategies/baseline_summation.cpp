@@ -17,7 +17,10 @@ double BaselineSummation::accumulate() {
                 MPI_DOUBLE, ROOT_RANK, MPI_COMM_WORLD
     );
 
-    double globalSum = std::accumulate(allSummands.begin(), allSummands.end(), 0.0);
+    double globalSum;
+    if (rank == ROOT_RANK) {
+        globalSum = std::accumulate(allSummands.begin(), allSummands.end(), 0.0);
+    }
     MPI_Bcast(&globalSum, 1, MPI_DOUBLE,
               ROOT_RANK, MPI_COMM_WORLD);
 

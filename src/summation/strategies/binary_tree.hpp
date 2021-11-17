@@ -38,6 +38,14 @@ public:
 protected:
     double accumulate(uint64_t index);
 
+    const uint64_t largest_child_index(const uint64_t index) const;
+
+    /** Figure out if the parts that make up a certain index are all local and form a subtree
+     * of a specifc size */
+    const bool is_local_subtree_of_size(const uint64_t expectedSubtreeSize, const uint64_t i) const;
+    const double accumulate_local_8subtree(const uint64_t startIndex) const;
+
+
 private:
     const uint64_t size,  begin, end;
     const vector<uint64_t> rankIntersectingSummands;

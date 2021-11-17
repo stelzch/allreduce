@@ -11,6 +11,7 @@
 #include <functional>
 #include <chrono>
 #include <io.hpp>
+#include <util.hpp>
 #include "binary_tree.hpp"
 
 #undef DEBUG_OUTPUT_TREE
@@ -125,6 +126,10 @@ double BinaryTreeSummation::accumulate(uint64_t index) {
     auto t1 = std::chrono::high_resolution_clock::now();
 #endif
 
+    if (is_local_subtree_of_size(8, index)) {
+        return accumulate_local_8subtree(index);
+    }
+
     double accumulator = acquireNumber(index);
 
 #ifdef ENABLE_INSTRUMENTATION
@@ -168,4 +173,27 @@ double BinaryTreeSummation::accumulate(uint64_t index) {
 
 const double BinaryTreeSummation::acquisitionTime(void) const {
     return std::chrono::duration_cast<std::chrono::nanoseconds> (acquisitionDuration).count();
+}
+
+const uint64_t BinaryTreeSummation::largest_child_index(const uint64_t index) const {
+    return index | (index - 1);
+}
+
+const bool BinaryTreeSummation::is_local_subtree_of_size(const uint64_t expectedSubtreeSize, const uint64_t i) const {
+    const auto lci = largest_child_index(i);
+    const auto subtreeSize = lci + 1 -i;
+    return (subtreeSize == expectedSubtreeSize && isLocal(lci));
+}
+
+const double BinaryTreeSummation::accumulate_local_8subtree(const uint64_t startIndex) const {
+    assert(isLocal(startIndex) && isLocal(largest_child_index(startIndex)));
+    const double level1a = summands[startIndex + 0 - begin] + summands[startIndex + 1 - begin];
+    const double level1b = summands[startIndex + 2 - begin] + summands[startIndex + 3 - begin];
+    const double level1c = summands[startIndex + 4 - begin] + summands[startIndex + 5 - begin];
+    const double level1d = summands[startIndex + 6 - begin] + summands[startIndex + 7 - begin];
+
+    const double level2a = level1a + level1b;
+    const double level2b = level1c + level1d;
+
+    return level2a + level2b;
 }

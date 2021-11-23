@@ -55,6 +55,7 @@ print("REVISION: ", revision)
 cur.execute("INSERT INTO runs(date, hostname, revision, cluster_size, description, flags) VALUES (datetime(), ?, ?, ?, ?, ?)",
         (platform.node(), revision.strip(), cluster_size, args.description, flags))
 run_id = cur.execute("SELECT MAX(ROWID) FROM runs").fetchall()[0][0]
+repetitions = 100
 
 
 def grep_number(name, string):
@@ -82,14 +83,13 @@ for datafile in datafiles:
     last_result = None
     for mode in modes:
         print(f"\t\tmode = {mode[2:]}")
-        cmd = f"mpirun --use-hwthread-cpus -np {cluster_size} {executable} -f {datafile} {mode} -d {expected_time_per_run} {flags}"
+        cmd = f"mpirun --use-hwthread-cpus -np {cluster_size} {executable} -f {datafile} {mode} -r {repetitions} {flags}"
         print(f"\t\t\t{cmd}")
         r = subprocess.run(cmd, shell=True, capture_output=True)
         r.check_returncode()
         output = r.stdout.decode("utf-8")
         time = grep_number("avg", output)
         stddev = grep_number("stddev", output)
-        repetitions = grep_number("repetitions", output)
         result = grep_number("sum", output)
 
         if last_result is not None:

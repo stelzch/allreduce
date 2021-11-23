@@ -37,17 +37,21 @@ void MessageBuffer::wait() {
 
 
 void MessageBuffer::flush() {
+    if(targetRank == -1) return;
     MPI_Request r;
     reqs.push_back(r);
 
     const int messageByteSize = sizeof(MessageBufferEntry) * outbox.size();
+    assert(0 < targetRank < 128);
     MPI_Isend(static_cast<void *>(&outbox[0]), messageByteSize, MPI_BYTE, targetRank,
             MESSAGEBUFFER_MPI_TAG, MPI_COMM_WORLD, &reqs.back());
 
+    targetRank = -1;
     outbox.clear();
 }
 
 const void MessageBuffer::receive(const int sourceRank) {
+    assert(0 < sourceRank < 128);
     MPI_Status status;
 
     MPI_Recv(static_cast<void *>(&buffer[0]), sizeof(MessageBufferEntry) * MAX_MESSAGE_LENGTH, MPI_BYTE,
@@ -86,7 +90,9 @@ const double MessageBuffer::get(const int sourceRank, const uint64_t index) {
         return result;
     }
 
-    // If not, we will wait for a message
+    // If not, we will wait for a message, but make sure no one is waiting for our results.
+    flush();
+    wait();
     receive(sourceRank);
 
     //cout << "Waiting for rank " << sourceRank << ", index " << index ;
@@ -200,6 +206,7 @@ double BinaryTreeSummation::accumulate(void) {
         messageBuffer.put(rankFromIndex(parent(summand)), summand, result);
     }
     messageBuffer.flush();
+    messageBuffer.wait();
 
     double result = (rank == ROOT_RANK) ? accumulate(0) : 0.0;
     MPI_Bcast(&result, 1, MPI_DOUBLE,

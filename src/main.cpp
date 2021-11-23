@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <cmath>
@@ -85,7 +86,6 @@ int main(int argc, char **argv) {
         ("tree", "Use the distributed binary tree scheme to compute the sum", cxxopts::value<bool>()->default_value("true"))
         ("f,file", "File name of the binary psllh file", cxxopts::value<string>())
         ("r,repetitions", "Repeat the calculation at most n times", cxxopts::value<unsigned long>()->default_value(to_string(MAX_REPETITIONS)))
-        ("d,duration", "Run the calculation for at least n seconds.", cxxopts::value<double>()->default_value("0"))
         ("c,distribution", "Number distribution, can be even, optimal or optimized,<VARIANCE>. Only relevant in tree mode", cxxopts::value<string>()->default_value("even"))
         ("v,verbose", "Be more verbose about calculations", cxxopts::value<bool>()->default_value("false"))
         ("h,help", "Display this help message", cxxopts::value<bool>()->default_value("false"));
@@ -206,49 +206,52 @@ int main(int argc, char **argv) {
     strategy->distribute(summands);
 
     double sum;
-    double totalDuration = 0.0;
-
-    // Duration of the accumulate operation in nanoseconds
-    std::vector<double> timings;
 
     const auto repetitions = result["repetitions"].as<unsigned long int>();
-    unsigned long int i = 0;
-    const auto maxDuration = result["duration"].as<double>() * 1e9; // in nanoseconds
 
-    bool keepCalculating = true;
+    // Duration of the accumulate operation in nanoseconds
+    std::vector<std::chrono::high_resolution_clock::time_point> timepoints;
+    timepoints.reserve(repetitions + 1);
+    timepoints.push_back(std::chrono::high_resolution_clock::now());
 
-    while (keepCalculating) {
-        // perform the actual calculation
-        MPI_Barrier(MPI_COMM_WORLD);
-        auto timestamp_before = std::chrono::high_resolution_clock::now();
+    for (unsigned long int i = 0; i < repetitions; i++) {
         sum = strategy->accumulate();
-        auto timestamp_after = std::chrono::high_resolution_clock::now();
-
         if (c_rank == 0) {
-            auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>
-                (timestamp_after - timestamp_before);
-            timings.push_back(duration.count());
-            totalDuration += duration.count();
-
-            if (totalDuration > maxDuration || i++ == repetitions) {
-                keepCalculating = false;
-            }
+            timepoints.push_back(std::chrono::high_resolution_clock::now());
         }
-
-        MPI_Bcast(&keepCalculating, 1, MPI_BYTE, 0, MPI_COMM_WORLD);
-
     }
 
+    timepoints.push_back(std::chrono::high_resolution_clock::now());
 
     if (c_rank == 0 && repetitions != 0) {
+        // Turn the timepoints into durations
+        std::vector<double> durations;
+        durations.reserve(repetitions);
+        int offset_start = (repetitions > 20) ? 8 : 0;
+        int offset_end = (repetitions > 20) ? -8 : 0;
+        std::transform(
+                timepoints.begin() + offset_start, timepoints.end() - 1 + offset_end,
+                timepoints.begin() + 1 + offset_start,
+                std::back_inserter(durations),
+                [] (const std::chrono::high_resolution_clock::time_point &a, const std::chrono::high_resolution_clock::time_point &b) {
+                const auto diff = b - a;
+                return std::chrono::duration_cast<std::chrono::nanoseconds>(diff).count();
+        });
+
+        cout << "durations = ";
+        for (auto x : durations) {
+            cout << x << ", ";
+        }
+        cout << endl;
+
+
         output_result(sum);
 
         // Calculate and output timing information
-        auto avg = Util::average(timings);
-        auto stddev = Util::stddev(timings);
+        auto avg = Util::average(durations);
+        auto stddev = Util::stddev(durations);
         cout << "avg=" << avg << endl;
         cout << "stddev=" << stddev << endl;
-        cout << "repetitions=" << i << endl;
     }
 
     MPI_Finalize();

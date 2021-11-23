@@ -1,3 +1,4 @@
+set(CMAKE_CXX_STANDARD 20)
 add_library(Summation strategies/summation_strategy.cpp
                         strategies/binary_tree.cpp
                         strategies/allreduce_summation.cpp

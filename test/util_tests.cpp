@@ -17,3 +17,15 @@ TEST(UtilTests, MeanAndStdDev) {
     EXPECT_NEAR(Util::average(x2), 5.0241691623816305, 1e-9);
     EXPECT_NEAR(Util::stddev(x2), 64.59670895614128, 1e-9);
 }
+
+TEST(UtilTests, Zip) {
+    const vector<double> a = {1.0, 2.0, 3.0};
+    const vector<int> b = {1, 0, 1, 0, 1};
+
+    const vector<double> expected = {1.0, 0.0, 3.0};
+
+    int count = 0;
+    Util::zip(a.begin(), a.end(), b.begin(), b.end(), [&count, expected](const double &a, const int &b) {
+        EXPECT_EQ(a * b, expected[count++]);
+    });
+}

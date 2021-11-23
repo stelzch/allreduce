@@ -79,13 +79,12 @@ int main(int argc, char **argv) {
 
     cxxopts::Options options("RADTree", "Compute a sum of distributed double values");
 
-    constexpr unsigned long MAX_REPETITIONS = std::numeric_limits<unsigned long>::max();
     options.add_options()
         ("allreduce", "Use MPI_Allreduce to compute the sum", cxxopts::value<bool>()->default_value("false"))
         ("baseline", "Gather numbers on a single rank and use std::accumulate", cxxopts::value<bool>()->default_value("false"))
         ("tree", "Use the distributed binary tree scheme to compute the sum", cxxopts::value<bool>()->default_value("true"))
         ("f,file", "File name of the binary psllh file", cxxopts::value<string>())
-        ("r,repetitions", "Repeat the calculation at most n times", cxxopts::value<unsigned long>()->default_value(to_string(MAX_REPETITIONS)))
+        ("r,repetitions", "Repeat the calculation at most n times", cxxopts::value<unsigned long>()->default_value("1"))
         ("c,distribution", "Number distribution, can be even, optimal or optimized,<VARIANCE>. Only relevant in tree mode", cxxopts::value<string>()->default_value("even"))
         ("v,verbose", "Be more verbose about calculations", cxxopts::value<bool>()->default_value("false"))
         ("h,help", "Display this help message", cxxopts::value<bool>()->default_value("false"));

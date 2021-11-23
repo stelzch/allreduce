@@ -24,20 +24,16 @@ const int MESSAGEBUFFER_MPI_TAG = 1;
 MessageBuffer::MessageBuffer() : targetRank(-1), inbox() {
     outbox.reserve(MAX_MESSAGE_LENGTH + 1);
     buffer.resize(MAX_MESSAGE_LENGTH);
+    reqs.reserve(16);
 }
 
 void MessageBuffer::flush() {
-    if (targetRank < 0)
-        return;
+    for (MPI_Request &r : reqs) {
+        MPI_Wait(&r, MPI_STATUS_IGNORE);
+    }
 
-    const int messageByteSize = outbox.size() * sizeof(MessageBufferEntry);
-
-    //cout << "Sending to " << targetRank << endl;
-    MPI_Send(static_cast<void *>(&outbox[0]), messageByteSize, MPI_BYTE, targetRank, MESSAGEBUFFER_MPI_TAG, MPI_COMM_WORLD);
-    //cout << " [DONE]" << endl;
-
-    targetRank = -1;
     outbox.clear();
+    reqs.clear();
 }
 
 const void MessageBuffer::receive(const int sourceRank) {
@@ -55,20 +51,16 @@ const void MessageBuffer::receive(const int sourceRank) {
 }
 
 void MessageBuffer::put(const int targetRank, const uint64_t index, const double value) {
-    if (outbox.size() >= MAX_MESSAGE_LENGTH || this->targetRank != targetRank) {
-        flush();
-    }
-
-    if (this->targetRank == -1) {
-        this->targetRank = targetRank;
-    }
+    MPI_Request req;
+    reqs.push_back(req);
 
     MessageBufferEntry e;
     e.index = index;
     e.value = value;
     outbox.push_back(e);
 
-    if (outbox.size() == MAX_MESSAGE_LENGTH) flush();
+    MPI_Isend(static_cast<void *>(&outbox.back()), sizeof(MessageBufferEntry), MPI_BYTE, targetRank, MESSAGEBUFFER_MPI_TAG, MPI_COMM_WORLD,
+            &reqs.back());
 }
 
 const double MessageBuffer::get(const int sourceRank, const uint64_t index) {

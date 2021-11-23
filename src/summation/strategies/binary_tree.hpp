@@ -4,6 +4,7 @@
 #include <chrono>
 #include <array>
 #include <map>
+#include <mpi.h>
 
 using std::vector;
 using std::array;
@@ -32,6 +33,7 @@ protected:
     int targetRank;
     vector<MessageBufferEntry> outbox;
     vector<MessageBufferEntry> buffer;
+    vector<MPI_Request> reqs;
 };
 
 class BinaryTreeSummation : public SummationStrategy {

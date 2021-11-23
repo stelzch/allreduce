@@ -22,7 +22,8 @@ class MessageBuffer {
 public:
     MessageBuffer();
     const void receive(const int sourceRank);
-    void flush();
+    void flush(void);
+    void wait(void);
 
     void put(const int targetRank, const uint64_t index, const double value);
     const double get(const int sourceRank, const uint64_t index);

@@ -29,3 +29,12 @@ TEST(UtilTests, Zip) {
         EXPECT_EQ(a * b, expected[count++]);
     });
 }
+
+TEST(UtilTests, IsPower2) {
+    EXPECT_TRUE(!Util::is_power2(0));
+    EXPECT_TRUE(!Util::is_power2(63));
+    EXPECT_TRUE(!Util::is_power2(65));
+
+    EXPECT_TRUE(Util::is_power2(64));
+    EXPECT_TRUE(Util::is_power2(1));
+}

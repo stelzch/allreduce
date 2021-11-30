@@ -115,7 +115,8 @@ BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
       size(n_summands[rank]),
       begin (startIndex[rank]),
       end (begin +  size),
-      rankIntersectingSummands(calculateRankIntersectingSummands()) {
+      rankIntersectingSummands(calculateRankIntersectingSummands()),
+      accumulationBuffer(size) {
 #ifdef DEBUG_OUTPUT_TREE
     printf("Rank %lu has %lu summands, starting from index %lu to %lu\n", rank, size, begin, end);
 #endif
@@ -155,7 +156,7 @@ uint64_t BinaryTreeSummation::rankFromIndex(uint64_t index) const {
     }
 
 
-    throw logic_error("Number cannot be found on any node");
+    throw logic_error(string("Number ") + to_string(index) + " cannot be found on any node");
 }
 
 const double BinaryTreeSummation::acquireNumber(const uint64_t index) {
@@ -216,7 +217,7 @@ double BinaryTreeSummation::accumulate(void) {
 }
 
 
-double BinaryTreeSummation::accumulate(uint64_t index) {
+double BinaryTreeSummation::recursiveAccumulate(uint64_t index) {
 #ifdef ENABLE_INSTRUMENTATION
     auto t1 = std::chrono::high_resolution_clock::now();
 #endif
@@ -255,7 +256,7 @@ double BinaryTreeSummation::accumulate(uint64_t index) {
         uint64_t child_index = index | (1 << zero_position);
 
         if (child_index < globalSize) {
-            double num = accumulate(child_index);
+            double num = recursiveAccumulate(child_index);
             accumulator += num;
 #ifdef DEBUG_OUTPUT_TREE
             printf("rk%i C%i.%i = C%i.%i + %f\n", rank, index, j, index, j - 1, num);
@@ -264,6 +265,59 @@ double BinaryTreeSummation::accumulate(uint64_t index) {
     }
 
     return accumulator;
+}
+
+double BinaryTreeSummation::accumulate(const uint64_t index) {
+    uint64_t n_elements = (index == 0) ? size : subtree_size(index);
+
+    // Special case for a single value, no accumulation needs to be done
+    if (n_elements == 1) {
+        return summands[index - begin];
+    }
+
+    uint64_t largest_local_index = min(end - 1, index + n_elements);
+    uint64_t n_local_elements = largest_local_index + 1 - index;
+
+    for (int i = 0; i < n_local_elements; i++) {
+        accumulationBuffer[i] = summands[index + i];
+    }
+
+    for (int level = 0; true; level++) {
+#ifdef DEBUG_OUTPUT_TREE
+        cout << "Level " << level << endl;
+#endif
+
+        uint64_t elements_written_to_buffer = 0;
+
+        for (int i = 0; true; i += 2) {
+            const uint64_t indexA = begin + (i + 0) * (1 << level);
+            const uint64_t indexB = begin + (i + 1) * (1 << level);
+
+            if (indexA >= end || indexA >= globalSize) {
+                break;
+            }
+
+            const double a = (indexA >= end) ? acquireNumber(indexA) : accumulationBuffer[i];
+
+            if (indexB >= globalSize) {
+                accumulationBuffer[i / 2] = a;
+                break;
+            }
+
+            const double b = (indexB >= end) ? acquireNumber(indexB) : accumulationBuffer[i+1];
+
+#ifdef DEBUG_OUTPUT_TREE
+            printf("(%li) + (%li) = %f + %f = %f\n", indexA, indexB, a, b, a+ b);
+#endif
+            accumulationBuffer[i / 2] = a + b;
+            elements_written_to_buffer++;
+        }
+
+        if (elements_written_to_buffer == 1)
+            break;
+    }
+
+    return accumulationBuffer[0];
 }
 
 const double BinaryTreeSummation::acquisitionTime(void) const {
@@ -275,6 +329,7 @@ const uint64_t BinaryTreeSummation::largest_child_index(const uint64_t index) co
 }
 
 const uint64_t BinaryTreeSummation::subtree_size(const uint64_t index) const {
+    assert(index != 0);
     return largest_child_index(index) + 1 - index;
 }
 

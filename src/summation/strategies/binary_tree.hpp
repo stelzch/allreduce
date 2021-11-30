@@ -67,9 +67,10 @@ public:
      */
     const double acquisitionTime(void) const;
 
-protected:
     double accumulate(uint64_t index);
+    double recursiveAccumulate(const uint64_t index);
 
+protected:
     const uint64_t largest_child_index(const uint64_t index) const;
     const uint64_t subtree_size(const uint64_t index) const;
 
@@ -82,6 +83,7 @@ protected:
 private:
     const uint64_t size,  begin, end;
     const vector<uint64_t> rankIntersectingSummands;
+    vector<uint64_t> accumulationBuffer;
     std::chrono::duration<double> acquisitionDuration;
     long int acquisitionCount;
 

@@ -4,7 +4,10 @@
 #include <cstdint>
 #include <mpi.h>
 #include <chrono>
+#include <iostream>
 
+using std::cout;
+using std::endl;
 using std::vector;
 
 static void BM_parent(benchmark::State& state) {
@@ -57,5 +60,43 @@ static void BM_chrono(benchmark::State& state) {
     }
 }
 BENCHMARK(BM_chrono);
+
+static void BM_iterative(benchmark::State& state) {
+    const int n = state.range(0);
+
+    // Prepare input data
+    vector<double> data;
+    data.reserve(n);
+    for(int i = 0; i < n; i++) data.push_back(i);
+
+    vector<int> n_summands = {n};
+    BinaryTreeSummation tree(0, n_summands);
+    tree.distribute(data);
+
+    for (auto _ : state) {
+       tree.accumulate(0); 
+    }
+}
+BENCHMARK(BM_iterative)->Arg(5)->Arg(2000)->Arg(5 * 1024 * 1024);
+
+static void BM_recursive(benchmark::State& state) {
+    const int n = state.range(0);
+    assert(n != 0);
+
+    // Prepare input data
+    vector<double> data;
+    data.reserve(n);
+    for(int i = 0; i < n; i++) data.push_back(i);
+
+
+    vector<int> n_summands = { n };
+    BinaryTreeSummation tree(0, n_summands);
+    tree.distribute(data);
+
+    for (auto _ : state) {
+       tree.recursiveAccumulate(0); 
+    }
+}
+BENCHMARK(BM_recursive)->Arg(5)->Arg(2000)->Arg(5 * 1024 * 1024);
 
 BENCHMARK_MAIN();

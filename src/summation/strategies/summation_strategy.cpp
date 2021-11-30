@@ -30,7 +30,15 @@ SummationStrategy::~SummationStrategy() {
 }
 
 void SummationStrategy::distribute(vector<double> &values) {
-    MPI_Scatterv(&values[0], &n_summands[0],&startIndex[0], MPI_DOUBLE,
-                 &summands[0], n_summands[rank], MPI_DOUBLE,
-                 ROOT_RANK, MPI_COMM_WORLD);
+    if (n_summands.size() == 1) {
+        // MPI-less variant for testing
+        assert(values.size() >= summands.size());
+        for (uint64_t i = 0; i < summands.size(); i++) {
+            summands[i] = values[i];
+        }
+    } else {
+        MPI_Scatterv(&values[0], &n_summands[0],&startIndex[0], MPI_DOUBLE,
+                    &summands[0], n_summands[rank], MPI_DOUBLE,
+                    ROOT_RANK, MPI_COMM_WORLD);
+    }
 }

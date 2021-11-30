@@ -13,6 +13,8 @@ namespace Util {
     double endTimer();
     double average(const vector<double> &v);
     double stddev(const vector<double> &v);
+
+    const bool is_power2(const unsigned long int x);
     void attach_debugger(bool condition);
 
     /** Zip through two iterators and call a function */

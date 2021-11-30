@@ -21,9 +21,6 @@
 
 using namespace std;
 
-extern void attach_debugger(bool condition);
-
-
 int c_rank = -1, c_size = -1;
 
 void output_result(double sum) {
@@ -87,6 +84,7 @@ int main(int argc, char **argv) {
         ("r,repetitions", "Repeat the calculation at most n times", cxxopts::value<unsigned long>()->default_value("1"))
         ("c,distribution", "Number distribution, can be even, optimal or optimized,<VARIANCE>. Only relevant in tree mode", cxxopts::value<string>()->default_value("even"))
         ("v,verbose", "Be more verbose about calculations", cxxopts::value<bool>()->default_value("false"))
+        ("d,debug", "Pause until debugger is attached to given rank", cxxopts::value<int>()->default_value("-1"))
         ("h,help", "Display this help message", cxxopts::value<bool>()->default_value("false"));
 
     cxxopts::ParseResult result;
@@ -103,6 +101,11 @@ int main(int argc, char **argv) {
     if (result["help"].as<bool>()) {
         cout << options.help() << endl;
         return 0;
+    }
+
+    int debugRank = result["debug"].as<int>();
+    if(0 <= debugRank < c_size) {
+        Util::attach_debugger(c_rank == debugRank);
     }
 
     enum SummationStrategies strategy_type;

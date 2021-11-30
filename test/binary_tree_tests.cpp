@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <vector>
+#include <cmath>
 #include "strategies/binary_tree.hpp"
 
 using std::vector;
@@ -32,4 +33,22 @@ TEST(BinaryTreeTests, BinaryTreeStructure) {
     EXPECT_EQ(rankIntersectingSummands.size(), 2);
     EXPECT_EQ(rankIntersectingSummands[0], 3);
     EXPECT_EQ(rankIntersectingSummands[1], 4);
+}
+
+TEST(BinaryTreeTests, IterativeEqualToRecursive) {
+    const int n = 30;
+
+    vector<int> n_summands { n };
+    vector<double> numbers(n);
+
+    // Generate test data
+    for (int i = 0; i < n; i++) {
+        numbers[i] = exp2(i);
+    }
+
+    BinaryTreeSummation tree(0, n_summands);
+    tree.distribute(numbers);
+
+    EXPECT_EQ(tree.accumulate(0), tree.recursiveAccumulate(0));
+
 }

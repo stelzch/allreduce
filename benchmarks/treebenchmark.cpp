@@ -81,7 +81,6 @@ BENCHMARK(BM_iterative)->Arg(5)->Arg(2000)->Arg(5 * 1024 * 1024);
 
 static void BM_recursive(benchmark::State& state) {
     const int n = state.range(0);
-    assert(n != 0);
 
     // Prepare input data
     vector<double> data;

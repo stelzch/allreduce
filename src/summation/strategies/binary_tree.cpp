@@ -42,6 +42,7 @@ void MessageBuffer::flush() {
     reqs.push_back(r);
 
     const int messageByteSize = sizeof(MessageBufferEntry) * outbox.size();
+
     assert(0 < targetRank < 128);
     MPI_Isend(static_cast<void *>(&outbox[0]), messageByteSize, MPI_BYTE, targetRank,
             MESSAGEBUFFER_MPI_TAG, MPI_COMM_WORLD, &reqs.back());
@@ -119,6 +120,10 @@ BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
       accumulationBuffer(size) {
 #ifdef DEBUG_OUTPUT_TREE
     printf("Rank %lu has %lu summands, starting from index %lu to %lu\n", rank, size, begin, end);
+    printf("Rank %lu rankIntersectingSummands: ", rank);
+    for (int ri : rankIntersectingSummands)
+        printf("%u ", ri);
+    printf("\n");
 #endif
 }
 
@@ -268,54 +273,44 @@ double BinaryTreeSummation::recursiveAccumulate(uint64_t index) {
 }
 
 double BinaryTreeSummation::accumulate(const uint64_t index) {
-    uint64_t n_elements = (index == 0) ? size : subtree_size(index);
+    uint64_t maxX = (index == 0) ? globalSize - 1
+        : min(globalSize - 1, index + subtree_size(index) - 1);
+    int maxY = (index == 0) ? ceil(log2(globalSize)) : log2(subtree_size(index));
 
-    // Special case for a single value, no accumulation needs to be done
-    if (n_elements == 1) {
-        return summands[index - begin];
-    }
-
-    uint64_t largest_local_index = min(end - 1, index + n_elements);
+    uint64_t largest_local_index = min(maxX, end - 1);
     uint64_t n_local_elements = largest_local_index + 1 - index;
 
-    for (int i = 0; i < n_local_elements; i++) {
-        accumulationBuffer[i] = summands[index + i];
+    for (size_t i = 0; i < n_local_elements; i++) {
+        accumulationBuffer[i] = summands[index + i - begin];
     }
 
-    for (int level = 0; true; level++) {
-#ifdef DEBUG_OUTPUT_TREE
-        cout << "Level " << level << endl;
-#endif
+    uint64_t elementsInBuffer = n_local_elements;
 
-        uint64_t elements_written_to_buffer = 0;
+    for (int y = 1; y <= maxY; y++) {
+        uint64_t elementsWritten = 0;
 
-        for (int i = 0; true; i += 2) {
-            const uint64_t indexA = begin + (i + 0) * (1 << level);
-            const uint64_t indexB = begin + (i + 1) * (1 << level);
+        for (uint64_t i = 0; i < elementsInBuffer; i += 2) {
+            const uint64_t indexA = index + (i + 0) * (1 << (y - 1));
+            const uint64_t indexB = index + (i + 1) * (1 << (y - 1));
+            assert(isLocal(indexA));
 
-            if (indexA >= end || indexA >= globalSize) {
+            const double a = accumulationBuffer[i];
+
+            if (indexB > maxX) {
+                // Copy remainder
+                accumulationBuffer[elementsWritten++] = a;
                 break;
             }
 
-            const double a = (indexA >= end) ? acquireNumber(indexA) : accumulationBuffer[i];
+            const double b = (indexB > largest_local_index) ? acquireNumber(indexB)
+                                                                : accumulationBuffer[i + 1];
 
-            if (indexB >= globalSize) {
-                accumulationBuffer[i / 2] = a;
-                break;
-            }
-
-            const double b = (indexB >= end) ? acquireNumber(indexB) : accumulationBuffer[i+1];
-
-#ifdef DEBUG_OUTPUT_TREE
-            printf("(%li) + (%li) = %f + %f = %f\n", indexA, indexB, a, b, a+ b);
-#endif
-            accumulationBuffer[i / 2] = a + b;
-            elements_written_to_buffer++;
+            accumulationBuffer[elementsWritten++] = a + b;
         }
 
-        if (elements_written_to_buffer == 1)
-            break;
+        elementsInBuffer = elementsWritten;
     }
+    assert(elementsInBuffer == 1);
 
     return accumulationBuffer[0];
 }

@@ -273,6 +273,11 @@ double BinaryTreeSummation::recursiveAccumulate(uint64_t index) {
 }
 
 double BinaryTreeSummation::accumulate(const uint64_t index) {
+    if (index & 1) {
+        // no accumulation needed
+        return summands[index - begin];
+    }
+
     uint64_t maxX = (index == 0) ? globalSize - 1
         : min(globalSize - 1, index + subtree_size(index) - 1);
     int maxY = (index == 0) ? ceil(log2(globalSize)) : log2(subtree_size(index));
@@ -313,6 +318,43 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
     assert(elementsInBuffer == 1);
 
     return accumulationBuffer[0];
+}
+
+double BinaryTreeSummation::nocheckAccumulate(void) {
+    assert(begin == 0);
+    assert(globalSize == end);
+
+    uint64_t maxX = globalSize - 1;
+    int maxY = ceil(log2(globalSize));
+
+    uint64_t largest_local_index = min(maxX, end - 1);
+    uint64_t n_local_elements = largest_local_index + 1;
+
+    for (size_t i = 0; i < n_local_elements; i++) {
+        accumulationBuffer[i] = summands[i];
+    }
+
+    uint64_t elementsInBuffer = n_local_elements;
+
+    for (int y = 1; y <= maxY; y++) {
+        uint64_t elementsWritten = 0;
+
+        for (uint64_t i = 0; i < elementsInBuffer; i += 2) {
+            const uint64_t indexA = (i + 0) * (1 << (y - 1));
+            const uint64_t indexB = (i + 1) * (1 << (y - 1));
+
+            const double a = accumulationBuffer[i];
+            const double b = (indexB > maxX) ? 0.0 : accumulationBuffer[i+1];
+
+            accumulationBuffer[elementsWritten++] = a + b;
+        }
+
+        elementsInBuffer = elementsWritten;
+    }
+    assert(elementsInBuffer == 1);
+
+    return accumulationBuffer[0];
+
 }
 
 const double BinaryTreeSummation::acquisitionTime(void) const {

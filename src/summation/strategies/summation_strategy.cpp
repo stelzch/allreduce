@@ -14,6 +14,8 @@ SummationStrategy::SummationStrategy(uint64_t rank, vector<int> &n_summands)
       clusterSize(n_summands.size()),
       globalSize(std::accumulate(n_summands.begin(), n_summands.end(), 0L)) {
 
+    assert(globalSize > 0);
+
     summands.resize(n_summands[rank]);
     startIndex.reserve(n_summands.size());
 

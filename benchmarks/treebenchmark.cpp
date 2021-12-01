@@ -1,6 +1,7 @@
 #include "strategies/binary_tree.hpp"
 #include <benchmark/benchmark.h>
 #include <vector>
+#include <numeric>
 #include <cstdint>
 #include <mpi.h>
 #include <chrono>
@@ -77,7 +78,25 @@ static void BM_iterative(benchmark::State& state) {
        tree.accumulate(0); 
     }
 }
-BENCHMARK(BM_iterative)->Arg(5)->Arg(2000)->Arg(5 * 1024 * 1024);
+BENCHMARK(BM_iterative)->RangeMultiplier(8)->Range(1, 1 << 27);
+
+static void BM_noCheckIterative(benchmark::State& state) {
+    const int n = state.range(0);
+
+    // Prepare input data
+    vector<double> data;
+    data.reserve(n);
+    for(int i = 0; i < n; i++) data.push_back(i);
+
+    vector<int> n_summands = {n};
+    BinaryTreeSummation tree(0, n_summands);
+    tree.distribute(data);
+
+    for (auto _ : state) {
+       volatile double a = tree.nocheckAccumulate(); 
+    }
+}
+BENCHMARK(BM_noCheckIterative)->RangeMultiplier(8)->Range(1, 1 << 27);
 
 static void BM_recursive(benchmark::State& state) {
     const int n = state.range(0);
@@ -96,6 +115,20 @@ static void BM_recursive(benchmark::State& state) {
        tree.recursiveAccumulate(0); 
     }
 }
-BENCHMARK(BM_recursive)->Arg(5)->Arg(2000)->Arg(5 * 1024 * 1024);
+BENCHMARK(BM_recursive)->RangeMultiplier(8)->Range(1, 1 << 27);
+
+static void BM_accumulative(benchmark::State& state) {
+    const int n = state.range(0);
+
+    // Prepare input data
+    vector<double> data;
+    data.reserve(n);
+    for(int i = 0; i < n; i++) data.push_back(i);
+
+    for (auto _ : state) {
+        volatile double result = std::accumulate(data.begin(), data.end(), 0.0);
+    }
+}
+BENCHMARK(BM_accumulative)->RangeMultiplier(8)->Range(1, 1 << 27);
 
 BENCHMARK_MAIN();

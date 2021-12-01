@@ -69,6 +69,7 @@ public:
 
     double accumulate(uint64_t index);
     double recursiveAccumulate(const uint64_t index);
+    double nocheckAccumulate(void);
 
 protected:
     const uint64_t largest_child_index(const uint64_t index) const;

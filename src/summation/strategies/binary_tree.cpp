@@ -294,23 +294,38 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
     for (int y = 1; y <= maxY; y++) {
         uint64_t elementsWritten = 0;
 
-        for (uint64_t i = 0; i < elementsInBuffer; i += 2) {
+        // Do one less iteration if we have a remainder
+        const uint64_t maxI = (elementsInBuffer >> 1) << 1;
+        assert(0 <= elementsInBuffer - 1 <= maxI <= elementsInBuffer);
+        assert(maxI % 2 == 0);
+
+        for (uint64_t i = 0; i < maxI; i += 2) {
             const uint64_t indexA = index + (i + 0) * (1 << (y - 1));
             const uint64_t indexB = index + (i + 1) * (1 << (y - 1));
             assert(isLocal(indexA));
+            assert(isLocal(indexB));
 
             const double a = accumulationBuffer[i];
-
-            if (indexB > maxX) {
-                // Copy remainder
-                accumulationBuffer[elementsWritten++] = a;
-                break;
-            }
-
-            const double b = (indexB > largest_local_index) ? acquireNumber(indexB)
-                                                                : accumulationBuffer[i + 1];
+            const double b = accumulationBuffer[i + 1];
 
             accumulationBuffer[elementsWritten++] = a + b;
+        }
+
+        // Deal with the remainder
+        if (2 * elementsWritten < elementsInBuffer) {
+            const uint64_t indexA = index + (elementsInBuffer - 1) * (1 << (y - 1));
+            const uint64_t indexB = index + (elementsInBuffer + 0) * (1 << (y - 1));
+            const double a = accumulationBuffer[elementsInBuffer - 1];
+
+            if (indexB > maxX) {
+                // the remainder is the last element of our tree, we just copy it over
+                accumulationBuffer[elementsWritten++] = a;
+            } else {
+                // otherwise, there is still one addition to calculate, but its second part is not local
+                assert(indexB >= end);
+                const double b = acquireNumber(indexB);
+                accumulationBuffer[elementsWritten++] = a + b;
+            }
         }
 
         elementsInBuffer = elementsWritten;

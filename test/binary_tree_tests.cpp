@@ -36,19 +36,26 @@ TEST(BinaryTreeTests, BinaryTreeStructure) {
 }
 
 TEST(BinaryTreeTests, IterativeEqualToRecursive) {
-    const int n = 30;
+    vector<int> dataSizes;
 
-    vector<int> n_summands { n };
-    vector<double> numbers(n);
-
-    // Generate test data
-    for (int i = 0; i < n; i++) {
-        numbers[i] = exp2(i);
+    // Perform 10 tests with random data sizes
+    for (int i = 0; i < 10; i++) {
+        dataSizes.push_back((std::rand() % 160'000) + 1);
     }
 
-    BinaryTreeSummation tree(0, n_summands);
-    tree.distribute(numbers);
+    for (auto n : dataSizes) {
+        vector<int> n_summands { n };
+        vector<double> numbers(n);
 
-    EXPECT_EQ(tree.accumulate(0), tree.recursiveAccumulate(0));
+        // Generate test data
+        for (int i = 0; i < n; i++) {
+            numbers[i] = exp2(i);
+        }
+
+        BinaryTreeSummation tree(0, n_summands);
+        tree.distribute(numbers);
+
+        EXPECT_EQ(tree.accumulate(0), tree.recursiveAccumulate(0));
+    }
 
 }

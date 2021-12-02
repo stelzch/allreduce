@@ -56,5 +56,7 @@ if __name__ == "__main__":
             retcode = -1
         if not check_reproducibility(datafile, "--tree", True):
             retcode = -1
+        if not check_reproducibility(datafile, "--reproblas", True):
+            retcode = -1
         check_reproducibility(datafile, "--allreduce", False)
     sys.exit(retcode)

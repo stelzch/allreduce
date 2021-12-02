@@ -17,7 +17,7 @@ args = parser.parse_args()
 executable = args.executable
 datafiles = glob.glob("data/*")
 cluster_size = args.cluster_size
-modes = ["--tree", "--allreduce", "--baseline"]
+modes = ["--tree", "--allreduce", "--baseline", "--reproblas"]
 expected_time_per_run = args.time_per_run # seconds for each benchmark execution
 flags = args.flags
 

@@ -13,6 +13,7 @@
 #include <strategies/allreduce_summation.hpp>
 #include <strategies/baseline_summation.hpp>
 #include <strategies/binary_tree.hpp>
+#include <strategies/reproblas_summation.hpp>
 #include <distribution.hpp>
 #include <string>
 #include <util.hpp>
@@ -43,7 +44,8 @@ template<typename T> void broadcast_vector(vector<T> &src, int root) {
 enum SummationStrategies {
     ALLREDUCE,
     BASELINE,
-    TREE
+    TREE,
+    REPROBLAS
 };
 
 enum SummationStrategies parse_mode_arg(string arg) {
@@ -80,6 +82,7 @@ int main(int argc, char **argv) {
         ("allreduce", "Use MPI_Allreduce to compute the sum", cxxopts::value<bool>()->default_value("false"))
         ("baseline", "Gather numbers on a single rank and use std::accumulate", cxxopts::value<bool>()->default_value("false"))
         ("tree", "Use the distributed binary tree scheme to compute the sum", cxxopts::value<bool>()->default_value("true"))
+        ("reproblas", "Utilize the ReproBLAS reduce methods", cxxopts::value<bool>()->default_value("false"))
         ("f,file", "File name of the binary psllh file", cxxopts::value<string>())
         ("r,repetitions", "Repeat the calculation at most n times", cxxopts::value<unsigned long>()->default_value("1"))
         ("c,distribution", "Number distribution, can be even, optimal or optimized,<VARIANCE>. Only relevant in tree mode", cxxopts::value<string>()->default_value("even"))
@@ -115,6 +118,8 @@ int main(int argc, char **argv) {
         strategy_type = BASELINE;
     } else if (result["tree"].as<bool>()) {
         strategy_type = TREE;
+    } else if (result["reproblas"].as<bool>()) {
+        strategy_type = REPROBLAS;
     } else {
         cli_error(options, "Must specify at least one of --allreduce, --baseline or --tree!");
         return -1;
@@ -202,6 +207,9 @@ int main(int argc, char **argv) {
             break;
         case TREE:
             strategy = std::make_unique<BinaryTreeSummation>(c_rank, summands_per_rank);
+            break;
+        case REPROBLAS:
+            strategy = std::make_unique<ReproBLASSummation>(c_rank, summands_per_rank);
             break;
     }
 

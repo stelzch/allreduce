@@ -1,3 +1,4 @@
+#define NDEBUG
 #include <mpi.h>
 #include <iostream>
 #include <fstream>

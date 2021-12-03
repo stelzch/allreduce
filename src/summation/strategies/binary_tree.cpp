@@ -279,16 +279,14 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
         return summands[index - begin];
     }
 
-    uint64_t maxX = (index == 0) ? globalSize - 1
+    const uint64_t maxX = (index == 0) ? globalSize - 1
         : min(globalSize - 1, index + subtree_size(index) - 1);
-    int maxY = (index == 0) ? ceil(log2(globalSize)) : log2(subtree_size(index));
+    const int maxY = (index == 0) ? ceil(log2(globalSize)) : log2(subtree_size(index));
 
-    uint64_t largest_local_index = min(maxX, end - 1);
-    uint64_t n_local_elements = largest_local_index + 1 - index;
+    const uint64_t largest_local_index = min(maxX, end - 1);
+    const uint64_t n_local_elements = largest_local_index + 1 - index;
 
-    for (size_t i = 0; i < n_local_elements; i++) {
-        accumulationBuffer[i] = summands[index + i - begin];
-    }
+    memcpy(&accumulationBuffer[0], &summands[index - begin], n_local_elements * sizeof(double));
 
     uint64_t elementsInBuffer = n_local_elements;
 
@@ -297,15 +295,8 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
 
         // Do one less iteration if we have a remainder
         const uint64_t maxI = (elementsInBuffer >> 1) << 1;
-        assert(0 <= elementsInBuffer - 1 <= maxI <= elementsInBuffer);
-        assert(maxI % 2 == 0);
 
         for (uint64_t i = 0; i < maxI; i += 2) {
-            const uint64_t indexA = index + (i + 0) * (1 << (y - 1));
-            const uint64_t indexB = index + (i + 1) * (1 << (y - 1));
-            assert(isLocal(indexA));
-            assert(isLocal(indexB));
-
             const double a = accumulationBuffer[i];
             const double b = accumulationBuffer[i + 1];
 

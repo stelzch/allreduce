@@ -9,6 +9,7 @@
 #include <cassert>
 #include <cmath>
 #include <unistd.h>
+#include <memory>
 #include <functional>
 #include <chrono>
 #include <io.hpp>
@@ -120,10 +121,12 @@ BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
       begin (startIndex[rank]),
       end (begin +  size),
       rankIntersectingSummands(calculateRankIntersectingSummands()),
-      accumulationBuffer(size),
       acquisitionDuration(std::chrono::duration<double>::zero()),
       acquisitionCount(0L)
 {
+    accumulationBuffer = new (std::align_val_t(32)) double[size];
+    assert(accumulationBuffer % 32 == 0);
+
 #ifdef DEBUG_OUTPUT_TREE
     printf("Rank %lu has %lu summands, starting from index %lu to %lu\n", rank, size, begin, end);
     printf("Rank %lu rankIntersectingSummands: ", rank);
@@ -134,6 +137,7 @@ BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
 }
 
 BinaryTreeSummation::~BinaryTreeSummation() {
+    delete[] accumulationBuffer;
 #ifdef ENABLE_INSTRUMENTATION
     cout << "Rank " << rank << " avg. acquisition time: "
         << acquisitionTime() / acquisitionCount << "  ns\n";
@@ -291,7 +295,7 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
     const uint64_t largest_local_index = min(maxX, end - 1);
     const uint64_t n_local_elements = largest_local_index + 1 - index;
 
-    memcpy(&accumulationBuffer[0], &summands[index - begin], n_local_elements * sizeof(double));
+    memcpy(accumulationBuffer, &summands[index - begin], n_local_elements * sizeof(double));
 
     uint64_t elementsInBuffer = n_local_elements;
 
@@ -314,16 +318,16 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
         // A B C D E F G H
         uint64_t i = 0;
         for (; i + 8 < maxI; i += 8) {
-            __m256d a = _mm256_loadu_pd(static_cast<double *>(&accumulationBuffer[i]));
-            __m256d b = _mm256_loadu_pd(static_cast<double *>(&accumulationBuffer[i + 4]));
+            __m256d a = _mm256_load_pd(static_cast<double *>(&accumulationBuffer[i]));
+            __m256d b = _mm256_load_pd(static_cast<double *>(&accumulationBuffer[i + 4]));
 
             __m256d c = _mm256_unpacklo_pd(a, b); // c = A E C G
             __m256d d = _mm256_unpackhi_pd(a, b); // d = B F D H
 
             const __m256d sum = _mm256_add_pd(c, d); // sum = A + B | E + F | C + D | G + H
-            _mm256_storeu_pd(&accumulationBuffer[elementsWritten], sum);
+            _mm256_store_pd(&accumulationBuffer[elementsWritten], sum);
 
-            // Swizzle E+F and C+D. Because the loading works in 128 bit lanes, we need to
+            // Swap E+F and C+D. Because the loading works in 128 bit lanes, we need to
             // untangle the result afterwards.
             double temp;
             temp = accumulationBuffer[elementsWritten + 1];

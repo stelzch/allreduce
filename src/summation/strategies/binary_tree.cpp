@@ -15,6 +15,10 @@
 #include <util.hpp>
 #include "binary_tree.hpp"
 
+#ifdef AVX
+#include <immintrin.h>
+#endif
+
 #undef DEBUG_OUTPUT_TREE
 
 using namespace std;
@@ -112,13 +116,14 @@ const double MessageBuffer::get(const int sourceRank, const uint64_t index) {
 
 BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
     : SummationStrategy(rank, n_summands),
-      acquisitionDuration(std::chrono::duration<double>::zero()),
-      acquisitionCount(0L),
       size(n_summands[rank]),
       begin (startIndex[rank]),
       end (begin +  size),
       rankIntersectingSummands(calculateRankIntersectingSummands()),
-      accumulationBuffer(size) {
+      accumulationBuffer(size),
+      acquisitionDuration(std::chrono::duration<double>::zero()),
+      acquisitionCount(0L)
+{
 #ifdef DEBUG_OUTPUT_TREE
     printf("Rank %lu has %lu summands, starting from index %lu to %lu\n", rank, size, begin, end);
     printf("Rank %lu rankIntersectingSummands: ", rank);
@@ -296,12 +301,44 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
         // Do one less iteration if we have a remainder
         const uint64_t maxI = (elementsInBuffer >> 1) << 1;
 
+#ifndef AVX
         for (uint64_t i = 0; i < maxI; i += 2) {
             const double a = accumulationBuffer[i];
             const double b = accumulationBuffer[i + 1];
 
             accumulationBuffer[elementsWritten++] = a + b;
         }
+#else
+        // Handwritten vectorization with AVX.
+        // We process 8 doubles (256bit) in each loop iteration:
+        // A B C D E F G H
+        uint64_t i = 0;
+        for (; i + 8 < maxI; i += 8) {
+            __m256d a = _mm256_loadu_pd(static_cast<double *>(&accumulationBuffer[i]));
+            __m256d b = _mm256_loadu_pd(static_cast<double *>(&accumulationBuffer[i + 4]));
+
+            __m256d c = _mm256_unpacklo_pd(a, b); // c = A E C G
+            __m256d d = _mm256_unpackhi_pd(a, b); // d = B F D H
+
+            const __m256d sum = _mm256_add_pd(c, d); // sum = A + B | E + F | C + D | G + H
+            _mm256_storeu_pd(&accumulationBuffer[elementsWritten], sum);
+
+            // Swizzle E+F and C+D. Because the loading works in 128 bit lanes, we need to
+            // untangle the result afterwards.
+            double temp;
+            temp = accumulationBuffer[elementsWritten + 1];
+            accumulationBuffer[elementsWritten + 1] = accumulationBuffer[elementsWritten + 2];
+            accumulationBuffer[elementsWritten + 2] = temp;
+
+            elementsWritten += 4;
+        }
+
+        // Unvectorized loop for the remainder
+        for (; i < maxI; i += 2) {
+            accumulationBuffer[elementsWritten++] = accumulationBuffer[i] + accumulationBuffer[i + 1];
+        }
+
+#endif
 
         // Deal with the remainder
         if (2 * elementsWritten < elementsInBuffer) {
@@ -315,7 +352,7 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
             } else {
                 // otherwise, there is still one addition to calculate, but its second part is not local
                 assert(indexB >= end);
-                const double b = acquireNumber(indexB);
+                const double b = messageBuffer.get(rankFromIndex(index), index);
                 accumulationBuffer[elementsWritten++] = a + b;
             }
         }

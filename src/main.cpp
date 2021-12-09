@@ -144,7 +144,6 @@ int main(int argc, char **argv) {
         } else {
             summands = IO::read_psllh(filename);
         }
-        assert(static_cast<long unsigned>(c_size) < summands.size());
         cout << "[IO] Loaded " << summands.size() << " summands from " << filename << endl;
 
         Distribution d(0,0);

@@ -12,6 +12,7 @@ parser.add_argument("-np", "--cluster_size", default=os.cpu_count(), type=int)
 parser.add_argument("-t", "--time_per_run", default = 30, type=float, help="Time to spend on each iteration of the benchmark")
 parser.add_argument("-f", "--flags", default="", type=str, help="Additional flags to pass to the executable under test")
 parser.add_argument("-d", "--description", default="", type=str, help="Annotation that will be put in result DB")
+parser.add_argument("--cluster-mode", help="Detect number of nodes and processors from environment", action='store_true')
 
 args = parser.parse_args()
 executable = args.executable
@@ -20,6 +21,7 @@ cluster_size = args.cluster_size
 modes = ["--tree", "--allreduce", "--baseline", "--reproblas"]
 expected_time_per_run = args.time_per_run # seconds for each benchmark execution
 flags = args.flags
+cluster_mode = args.cluster_mode
 
 con = sqlite3.connect('benchmarks/results.db')
 cur = con.cursor()
@@ -54,6 +56,7 @@ print("REVISION: ", revision)
 
 cur.execute("INSERT INTO runs(date, hostname, revision, cluster_size, description, flags) VALUES (datetime(), ?, ?, ?, ?, ?)",
         (platform.node(), revision.strip(), cluster_size, args.description, flags))
+con.commit()
 run_id = cur.execute("SELECT MAX(ROWID) FROM runs").fetchall()[0][0]
 repetitions = 100
 
@@ -83,7 +86,12 @@ for datafile in datafiles:
     last_result = None
     for mode in modes:
         print(f"\t\tmode = {mode[2:]}")
-        cmd = f"mpirun --use-hwthread-cpus -np {cluster_size} {executable} -f {datafile} {mode} -r {repetitions} {flags}"
+        opts = ""
+        if cluster_mode:
+            opts = "--bind-to core --map-by core -report-bindings"
+        else:
+            opts = f"--use-hwthread-cpus -np {cluster_size}"
+        cmd = f"mpirun {opts} {executable} -f {datafile} {mode} -r {repetitions} {flags} 2>&1"
         print(f"\t\t\t{cmd}")
         r = subprocess.run(cmd, shell=True, capture_output=True)
         r.check_returncode()

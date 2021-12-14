@@ -356,7 +356,7 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
             } else {
                 // otherwise, there is still one addition to calculate, but its second part is not local
                 assert(indexB >= end);
-                const double b = messageBuffer.get(rankFromIndex(index), index);
+                const double b = messageBuffer.get(rankFromIndex(indexB), indexB);
                 accumulationBuffer[elementsWritten++] = a + b;
             }
         }

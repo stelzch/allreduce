@@ -86,6 +86,7 @@ int main(int argc, char **argv) {
         ("f,file", "File name of the binary psllh file", cxxopts::value<string>())
         ("r,repetitions", "Repeat the calculation at most n times", cxxopts::value<unsigned long>()->default_value("1"))
         ("c,distribution", "Number distribution, can be even, optimal or optimized,<VARIANCE>. Only relevant in tree mode", cxxopts::value<string>()->default_value("even"))
+        ("n", "Use at most n numbers from the supplied data file", cxxopts::value<unsigned int>()->default_value(to_string(numeric_limits<unsigned int>::max())))
         ("v,verbose", "Be more verbose about calculations", cxxopts::value<bool>()->default_value("false"))
         ("d,debug", "Pause until debugger is attached to given rank", cxxopts::value<int>()->default_value("-1"))
         ("h,help", "Display this help message", cxxopts::value<bool>()->default_value("false"));
@@ -134,6 +135,7 @@ int main(int argc, char **argv) {
         return -1;
     }
     bool verbose = result["verbose"].as<bool>();
+    unsigned int max_summands = result["n"].as<unsigned int>();
 
 
     vector<double> summands;
@@ -145,6 +147,7 @@ int main(int argc, char **argv) {
             summands = IO::read_psllh(filename);
         }
         cout << "[IO] Loaded " << summands.size() << " summands from " << filename << endl;
+        summands.resize(std::min<unsigned int>(summands.size(), max_summands));
 
         Distribution d(0,0);
         bool initialized = false;

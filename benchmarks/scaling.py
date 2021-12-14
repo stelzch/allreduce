@@ -65,7 +65,9 @@ if __name__ == '__main__':
     run_id = cur.execute("SELECT MAX(ROWID) FROM runs").fetchall()[0][0]
 
     ms = list(range(0 if m_min == 1 else m_min, m_max + 1, m_step))
-    if m_min == 1:
+    if m_step == 1:
+        ms = ms[1:]
+    elif m_min == 1:
         ms[0] = 1
 
     for m in ms:
@@ -77,7 +79,7 @@ if __name__ == '__main__':
         opts = f"--use-hwthread-cpus -np {m}"
         mode = "--tree"
         repetitions = "100"
-        flags = ""
+        flags = f"-n {n}"
         cmd = f"mpirun {opts} {executable} -f {datafile} {mode} -r {repetitions} {flags} 2>&1"
         print(f"\t{cmd}")
         r = subprocess.run(cmd, shell=True, capture_output=True)

@@ -5,7 +5,7 @@
 #include <exception>
 #include <vector>
 #include <numeric>
-#include <strings.h>
+#include <cstring>
 #include <cassert>
 #include <cmath>
 #include <unistd.h>

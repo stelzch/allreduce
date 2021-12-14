@@ -64,7 +64,10 @@ if __name__ == '__main__':
     con.commit()
     run_id = cur.execute("SELECT MAX(ROWID) FROM runs").fetchall()[0][0]
 
-    ms = list(range(m_min, m_max + 1, m_step))
+    ms = list(range(0 if m_min == 1 else m_min, m_max + 1, m_step))
+    if m_min == 1:
+        ms[0] = 1
+
     for m in ms:
         n = int(min(n_datafile, n_cutoff))
         if weak:

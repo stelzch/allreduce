@@ -6,6 +6,40 @@ import re
 import platform
 import argparse
 
+def init_db(cur):
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT,
+        hostname TEXT,
+        revision TEXT,
+        cluster_size INTEGER,
+        description TEXT,
+        flags TEXT
+    );
+    """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS results (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id INTEGER,
+        datafile TEXT,
+        n_summands INTEGER,
+        repetitions INTEGER,
+        mode TEXT,
+        time_ns REAL,
+        stddev REAL,
+        output TEXT,
+        ranks INTEGER,
+        FOREIGN KEY(run_id) REFERENCES runs(id) ON DELETE CASCADE
+    );
+    """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS durations (
+        result_id INTEGER,
+        time_ns REAL,
+        FOREIGN KEY (result_id) REFERENCES results ON DELETE CASCADE
+    );
+    """)
 
 def grep_number(name, string):
     regexp = f"^{name}=([+\-0-9.e]+)$"
@@ -14,6 +48,15 @@ def grep_number(name, string):
         return m
     else:
         return float(m.group(1))
+
+def grep_durations(output):
+    m = re.search("^durations=([+\-0-9.e,]+)$", output, flags=re.MULTILINE)
+    
+    if m == None:
+        return []
+    
+    return list(map(float, m.group(1).split(",")))
+
 
 
 if __name__ == "__main__":
@@ -36,30 +79,7 @@ if __name__ == "__main__":
 
     con = sqlite3.connect('benchmarks/results.db')
     cur = con.cursor()
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS runs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        date TEXT,
-        hostname TEXT,
-        revision TEXT,
-        cluster_size INTEGER,
-        description TEXT,
-        flags TEXT
-    );
-    """)
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS results (
-        run_id INTEGER,
-        datafile TEXT,
-        n_summands INTEGER,
-        repetitions INTEGER,
-        mode TEXT,
-        time_ns REAL,
-        stddev REAL,
-        output TEXT,
-        FOREIGN KEY(run_id) REFERENCES runs(id) ON DELETE CASCADE
-    );
-    """)
+    init_db(cur)
 
     git_result = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True)
     revision = str(git_result.stdout, 'utf-8') if git_result.returncode == 0 else "NONE"
@@ -101,6 +121,7 @@ if __name__ == "__main__":
             time = grep_number("avg", output)
             stddev = grep_number("stddev", output)
             result = grep_number("sum", output)
+            durations = grep_durations(output)
 
             if last_result is not None:
                 deviation = abs(last_result - result)
@@ -108,9 +129,12 @@ if __name__ == "__main__":
                     print(f"\t\tLarge deviation to previous run detected: {deviation}")
             last_result = result
 
-            cur.execute('INSERT INTO results(run_id, datafile, n_summands, repetitions, mode, time_ns, stddev, output)' \
-                    'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                    (run_id, datafile, n_summands, repetitions, mode[2:], time, stddev, output))
+            cur.execute('INSERT INTO results(run_id, datafile, n_summands, repetitions, mode, time_ns, stddev, output, ranks)' \
+                    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
+                    (run_id, datafile, n_summands, repetitions, mode[2:], time, stddev, output, cluster_size))
+            result_id = cur.fetchone()[0]
+            cur.executemany('INSERT INTO durations (result_id, time_ns) VALUES (?, ?)',
+                    [(result_id, duration) for duration in durations])
             con.commit()
 
     con.close()

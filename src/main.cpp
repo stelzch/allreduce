@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
     }
 
     int debugRank = result["debug"].as<int>();
-    if(0 <= debugRank < c_size) {
+    if((0 <= debugRank) && (debugRank < c_size)) {
         Util::attach_debugger(c_rank == debugRank);
     }
 
@@ -233,8 +233,6 @@ int main(int argc, char **argv) {
         }
     }
 
-    timepoints.push_back(std::chrono::high_resolution_clock::now());
-
     if (c_rank == 0 && repetitions != 0) {
         // Turn the timepoints into durations
         std::vector<double> durations;
@@ -250,12 +248,12 @@ int main(int argc, char **argv) {
                 return std::chrono::duration_cast<std::chrono::nanoseconds>(diff).count();
         });
 
-        cout << "durations = ";
-        for (auto x : durations) {
-            cout << x << ", ";
-        }
-        cout << endl;
 
+        printf("durations=");
+        for (auto i = 0UL; i < durations.size() - 1; i++) {
+            printf("%.8e,", durations[i]);
+        }
+        printf("%.8e\n", durations.back());
 
         output_result(sum);
 

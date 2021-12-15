@@ -130,8 +130,10 @@ if __name__ == "__main__":
             last_result = result
 
             cur.execute('INSERT INTO results(run_id, datafile, n_summands, repetitions, mode, time_ns, stddev, output, ranks)' \
-                    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
+                    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', # RETURNING id',
                     (run_id, datafile, n_summands, repetitions, mode[2:], time, stddev, output, cluster_size))
+
+            cur.execute('SELECT MAX(id) FROM results')
             result_id = cur.fetchone()[0]
             cur.executemany('INSERT INTO durations (result_id, time_ns) VALUES (?, ?)',
                     [(result_id, duration) for duration in durations])

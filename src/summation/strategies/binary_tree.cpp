@@ -126,6 +126,7 @@ BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
 {
     accumulationBuffer = new (std::align_val_t(32)) double[size];
     assert(accumulationBuffer % 32 == 0);
+    assert(n_summands[0] != 0 && "The first rank can not be empty!");
 
 #ifdef DEBUG_OUTPUT_TREE
     printf("Rank %lu has %lu summands, starting from index %lu to %lu\n", rank, size, begin, end);
@@ -196,12 +197,14 @@ vector<uint64_t> BinaryTreeSummation::calculateRankIntersectingSummands(void) co
         return result;
     }
 
-    // ignore index 0
-    uint64_t startIndex = (begin == 0) ? 1 : begin;
-    for (uint64_t index = startIndex; index < end; index++) {
-        if (!isLocal(parent(index))) {
-            result.push_back(index);
-        }
+    assert(begin != 0);
+
+    uint64_t index = begin;
+    while (index < end) {
+        assert(parent(index) < begin);
+        result.push_back(index);
+
+        index = index + subtree_size(index);
     }
 
     return result;

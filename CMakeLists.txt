@@ -6,6 +6,10 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if(SCOREP)
+    set(CMAKE_CXX_COMPILER ${PROJECT_SOURCE_DIR}/misc/compiler.sh)
+endif()
+
 
 # Dependencies on system libraries
 find_package(MPI REQUIRED)

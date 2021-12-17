@@ -16,7 +16,7 @@ find_package(MPI REQUIRED)
 include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 
 # Enable optimizations
-add_compile_options(-Wall -O3 -ggdb -mfpmath=sse -mmmx -msse -msse2)
+add_compile_options(-Wall -O3 -ggdb -mfpmath=sse -mmmx -msse -msse2 -march=native)
 
 # Parts of the project
 add_subdirectory(src)

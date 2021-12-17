@@ -50,7 +50,7 @@ def check_reproducibility(datafile, mode, reproducibilityExpected):
 
 if __name__ == "__main__":
     retcode = 0
-    datafiles = glob.glob("data/*")
+    datafiles = glob.glob("data/*psllh")
     for datafile in datafiles:
         if not check_reproducibility(datafile, "--baseline", True):
             retcode = -1

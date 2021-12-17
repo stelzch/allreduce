@@ -84,7 +84,7 @@ protected:
 private:
     const uint64_t size,  begin, end;
     const vector<uint64_t> rankIntersectingSummands;
-    double *accumulationBuffer;
+    vector<double> accumulationBuffer;
     std::chrono::duration<double> acquisitionDuration;
     long int acquisitionCount;
 

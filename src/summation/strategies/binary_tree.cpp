@@ -122,12 +122,9 @@ BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
       end (begin +  size),
       rankIntersectingSummands(calculateRankIntersectingSummands()),
       acquisitionDuration(std::chrono::duration<double>::zero()),
-      acquisitionCount(0L)
+      acquisitionCount(0L),
+      accumulationBuffer(size)
 {
-    accumulationBuffer = new (std::align_val_t(32)) double[size];
-    assert(accumulationBuffer % 32 == 0);
-    assert(n_summands[0] != 0 && "The first rank can not be empty!");
-
 #ifdef DEBUG_OUTPUT_TREE
     printf("Rank %lu has %lu summands, starting from index %lu to %lu\n", rank, size, begin, end);
     printf("Rank %lu rankIntersectingSummands: ", rank);
@@ -138,7 +135,6 @@ BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
 }
 
 BinaryTreeSummation::~BinaryTreeSummation() {
-    delete[] accumulationBuffer;
 #ifdef ENABLE_INSTRUMENTATION
     cout << "Rank " << rank << " avg. acquisition time: "
         << acquisitionTime() / acquisitionCount << "  ns\n";
@@ -298,7 +294,7 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
     const uint64_t largest_local_index = min(maxX, end - 1);
     const uint64_t n_local_elements = largest_local_index + 1 - index;
 
-    memcpy(accumulationBuffer, &summands[index - begin], n_local_elements * sizeof(double));
+    memcpy(&accumulationBuffer[0], &summands[index - begin], n_local_elements * sizeof(double));
 
     uint64_t elementsInBuffer = n_local_elements;
 

@@ -152,7 +152,7 @@ int main(int argc, char **argv) {
         Distribution d(0,0);
         bool initialized = false;
         if (distrib_mode == "even" || strategy_type != TREE) {
-            d = Distribution::even(summands.size(), c_size);
+            d = Distribution::even_remainder_on_last(summands.size(), c_size);
             initialized = true;
         } else if (distrib_mode == "optimal") {
             d = Distribution::optimal(summands.size(), c_size);

@@ -294,7 +294,9 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
     const uint64_t largest_local_index = min(maxX, end - 1);
     const uint64_t n_local_elements = largest_local_index + 1 - index;
 
-    memcpy(&accumulationBuffer[0], &summands[index - begin], n_local_elements * sizeof(double));
+    for (size_t i = 0; i < n_local_elements; i++) {
+        accumulationBuffer[i] = summands[index - begin + i];
+    }
 
     uint64_t elementsInBuffer = n_local_elements;
 

@@ -80,6 +80,16 @@ protected:
     const bool is_local_subtree_of_size(const uint64_t expectedSubtreeSize, const uint64_t i) const;
     const double accumulate_local_8subtree(const uint64_t startIndex) const;
 
+    // Choose buffer A if number is even, buffer B otherwise
+    inline double *choose_buffer(const uint64_t index, const uint64_t number) {
+        const size_t lastBit = number & 1;
+        const double *ptrA = &accumulationBufferA[0] + index;
+        const double *ptrB = &accumulationBufferB[0] + index;
+        
+        const intptr_t location = lastBit * reinterpret_cast<std::intptr_t>(ptrB) + (1 - lastBit) * reinterpret_cast<std::intptr_t>(ptrA);
+        return reinterpret_cast<double *>(location);
+    }
+
 
 private:
     const uint64_t size,  begin, end;

@@ -321,11 +321,7 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
             const double a = accumulationBufferA[j];
             const double b = accumulationBufferB[j];
 
-            if (j % 2 == 0) {
-                accumulationBufferA[j / 2] = a + b;
-            } else {
-                accumulationBufferB[j / 2] = a + b;
-            }
+            *choose_buffer(j / 2, j) = a + b;
 
             elementsWritten++;
         }
@@ -356,12 +352,7 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
             }
 
 
-            if (elementsWritten % 2 == 0) {
-                accumulationBufferA[j >> 1] = sum;
-            } else {
-                accumulationBufferB[j >> 1] = sum;
-            }
-
+            *choose_buffer(j >> 1, elementsWritten) = sum;
             elementsWritten++;
         }
 

@@ -48,7 +48,7 @@ namespace Util {
             if (n > std::numeric_limits<std::size_t>::max() / sizeof(T))
                 throw std::bad_array_new_length();
 
-            if (auto p = static_cast<T*>(std::malloc(n * sizeof(T)))) {
+            if (auto p = static_cast<T*>(std::aligned_alloc(32, n * sizeof(T)))) {
                 return p;
             }
 

@@ -5,6 +5,7 @@
 #include <array>
 #include <map>
 #include <mpi.h>
+#include <util.hpp>
 
 using std::vector;
 using std::array;
@@ -84,7 +85,7 @@ protected:
 private:
     const uint64_t size,  begin, end;
     const vector<uint64_t> rankIntersectingSummands;
-    vector<double> accumulationBuffer;
+    vector<double, Util::AlignedAllocator<double>> accumulationBuffer;
     std::chrono::duration<double> acquisitionDuration;
     long int acquisitionCount;
 

@@ -2,9 +2,12 @@
 #define UTIL_HPP_
 
 #include <chrono>
-#include <vector>
-#include <iterator>
+#include <cstdlib>
 #include <functional>
+#include <iterator>
+#include <limits>
+#include <new>
+#include <vector>
 
 using std::vector;
 
@@ -29,6 +32,33 @@ namespace Util {
         }
 
     }
+
+    template<class T>
+    struct AlignedAllocator
+    {
+        typedef T value_type;
+
+        // default constructor
+        AlignedAllocator () =default;
+
+        // copy constructor
+        template <class U> constexpr AlignedAllocator (const AlignedAllocator<U>&) noexcept {}
+
+        T* allocate(std::size_t n) {
+            if (n > std::numeric_limits<std::size_t>::max() / sizeof(T))
+                throw std::bad_array_new_length();
+
+            if (auto p = static_cast<T*>(std::malloc(n * sizeof(T)))) {
+                return p;
+            }
+
+            throw std::bad_alloc();
+        }
+
+        void deallocate(T* p, std::size_t n) noexcept {
+            std::free(p);
+        }
+    };
 }
 
 #endif

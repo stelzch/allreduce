@@ -70,7 +70,6 @@ public:
 
     double accumulate(uint64_t index);
     double recursiveAccumulate(const uint64_t index);
-    double nocheckAccumulate(void);
 
 protected:
     const uint64_t largest_child_index(const uint64_t index) const;
@@ -85,7 +84,7 @@ protected:
 private:
     const uint64_t size,  begin, end;
     const vector<uint64_t> rankIntersectingSummands;
-    vector<double, Util::AlignedAllocator<double>> accumulationBuffer;
+    vector<double, Util::AlignedAllocator<double>> accumulationBufferA, accumulationBufferB;
     std::chrono::duration<double> acquisitionDuration;
     long int acquisitionCount;
 

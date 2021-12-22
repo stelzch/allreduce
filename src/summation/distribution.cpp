@@ -56,10 +56,10 @@ const Distribution Distribution::even_remainder_on_last(uint64_t n, uint64_t ran
     return d;
 }
 
-const bool Distribution::varianceWithinBounds(const uint64_t actualLength, const uint64_t intendedLength,
+const bool Distribution::varianceWithinBounds(const uint64_t fairIndex, const uint64_t proposedIndex, const uint64_t fairShare,
         const float variance) {
-    float proportion = actualLength / (float)  intendedLength;
-    return variance <= proportion;
+    float deviationFromFairIndex = abs(fairIndex - proposedIndex) / static_cast<float>(fairShare);
+    return deviationFromFairIndex <= variance;
 }
 
 const Distribution Distribution::lsb_cleared(const uint64_t n, const uint64_t ranks, const float variance) {
@@ -82,7 +82,7 @@ const Distribution Distribution::lsb_cleared(const uint64_t n, const uint64_t ra
         // we replace the proposed index with its parent index, producing one least-significant zero
         // per iteration.
         while(lastIndex < proposedIndex
-                && varianceWithinBounds(proposedIndex - lastIndex, fairShare, variance)) {
+                && Distribution::varianceWithinBounds(fairShare * i, proposedIndex, fairShare, variance)) {
             index = proposedIndex;
             if (i % 2 == 0) {
                 proposedIndex = BinaryTreeSummation::parent(index);
@@ -113,7 +113,8 @@ const Distribution Distribution::optimal(const uint64_t n, const uint64_t ranks)
     double candidateVariance = 1.0;
     bool hasBeenDescending = false;
 
-    for (double testedVariance = 1.0; testedVariance > 0.0; testedVariance -= 0.001) {
+
+    for (double testedVariance = 0.0; testedVariance < 1.0; testedVariance += 0.0001) {
         auto generated = Distribution::lsb_cleared(n, ranks, testedVariance);
 
         if (generated.score() < score) {
@@ -198,7 +199,12 @@ const double Distribution::score() const {
 }
 
 const void Distribution::printScore() const {
-    printf("%f, (%li messages)\n", score(), rankIntersectionCount());
+    const uint64_t min = *std::min_element(nSummands.begin(), nSummands.end());
+    const uint64_t max = *std::max_element(nSummands.begin(), nSummands.end());
+
+    const uint64_t diff = max - min;
+    printf("%f, (%li messages), %li maximal message difference\n", score(), rankIntersectionCount(), diff);
+
 }
 
 const void Distribution::printDistribution() const {
@@ -210,12 +216,12 @@ const void Distribution::printDistribution() const {
 }
 
 const uint64_t Distribution::roundUp(const uint64_t number) {
-    const int delta = ffsl(number);
+    const int delta = ffsl(number) - 1;
     // Search loop for first zero with an index greater than delta
     for (int i = delta; i < sizeof(number) * 8; i++) {
 
         // If we have found a bit, set it and reset all less significant bits
-        if ((number >> i) & 1) {
+        if ((number & (1UL << i)) == 0) {
            const uint64_t mask = ~((1 << i) - 1); // Clear all bits lower than i
            const uint64_t roundedNumber = (number & mask) | (1 << i); // Set bit i
 

@@ -1,0 +1,76 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_OUTPUT_EXCMD	mixed	/number, pattern, mixed, or combineV2/
+!_TAG_OUTPUT_FILESEP	slash	/slash or backslash/
+!_TAG_OUTPUT_MODE	u-ctags	/u-ctags or e-ctags/
+!_TAG_PATTERN_LENGTH_LIMIT	96	/0 for no limit/
+!_TAG_PROC_CWD	/home/christoph/Studium/Thesis/warmups/src/summation/strategies/	//
+!_TAG_PROGRAM_AUTHOR	Universal Ctags Team	//
+!_TAG_PROGRAM_NAME	Universal Ctags	/Derived from Exuberant Ctags/
+!_TAG_PROGRAM_URL	https://ctags.io/	/official site/
+!_TAG_PROGRAM_VERSION	5.9.0	/p5.9.20210905.0/
+AllreduceSummation	allreduce_summation.hpp	/^class AllreduceSummation : public SummationStrategy {$/;"	c
+BINOMIALALLREDUCE_ALLREDUCE_SUMMATION_H	allreduce_summation.hpp	/^#define BINOMIALALLREDUCE_ALLREDUCE_SUMMATION_H$/;"	d
+BINOMIALALLREDUCE_BASELINESUMMATION_H	baseline_summation.hpp	/^#define BINOMIALALLREDUCE_BASELINESUMMATION_H$/;"	d
+BaselineSummation	baseline_summation.hpp	/^class BaselineSummation : public SummationStrategy {$/;"	c
+BinaryTreeSummation	binary_tree.cpp	/^BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)$/;"	f	class:BinaryTreeSummation
+BinaryTreeSummation	binary_tree.hpp	/^class BinaryTreeSummation : public SummationStrategy {$/;"	c
+MAX_MESSAGE_LENGTH	binary_tree.hpp	/^const uint8_t MAX_MESSAGE_LENGTH = 4;$/;"	v	typeref:typename:const uint8_t
+MESSAGEBUFFER_MPI_TAG	binary_tree.cpp	/^const int MESSAGEBUFFER_MPI_TAG = 1;$/;"	v	typeref:typename:const int
+MessageBuffer	binary_tree.cpp	/^MessageBuffer::MessageBuffer() : targetRank(-1), inbox() {$/;"	f	class:MessageBuffer
+MessageBuffer	binary_tree.hpp	/^class MessageBuffer {$/;"	c
+MessageBufferEntry	binary_tree.hpp	/^struct MessageBufferEntry {$/;"	s
+NDEBUG	binary_tree.cpp	/^#define NDEBUG$/;"	d	file:
+REPROBLAS_SUMMATION_HPP_	reproblas_summation.hpp	/^#define REPROBLAS_SUMMATION_HPP_$/;"	d
+ROOT_RANK	summation_strategy.hpp	/^    const int ROOT_RANK = 0;$/;"	m	class:SummationStrategy	typeref:typename:const int
+ReproBLASSummation	reproblas_summation.hpp	/^class ReproBLASSummation : public SummationStrategy {$/;"	c
+SUMMATION_STRATEGY_HPP_	summation_strategy.hpp	/^#define SUMMATION_STRATEGY_HPP_$/;"	d
+SummationStrategy	summation_strategy.cpp	/^SummationStrategy::SummationStrategy(uint64_t rank, vector<int> &n_summands)$/;"	f	class:SummationStrategy
+SummationStrategy	summation_strategy.hpp	/^class SummationStrategy {$/;"	c
+accumulate	allreduce_summation.cpp	/^double AllreduceSummation::accumulate() {$/;"	f	class:AllreduceSummation	typeref:typename:double
+accumulate	baseline_summation.cpp	/^double BaselineSummation::accumulate() {$/;"	f	class:BaselineSummation	typeref:typename:double
+accumulate	binary_tree.cpp	/^double BinaryTreeSummation::accumulate(const uint64_t index) {$/;"	f	class:BinaryTreeSummation	typeref:typename:double
+accumulate	binary_tree.cpp	/^double BinaryTreeSummation::accumulate(void) {$/;"	f	class:BinaryTreeSummation	typeref:typename:double
+accumulate	reproblas_summation.cpp	/^double ReproBLASSummation::accumulate() {$/;"	f	class:ReproBLASSummation	typeref:typename:double
+accumulate_local_8subtree	binary_tree.cpp	/^const double BinaryTreeSummation::accumulate_local_8subtree(const uint64_t startIndex) const {$/;"	f	class:BinaryTreeSummation	typeref:typename:const double
+accumulationBuffer	binary_tree.hpp	/^    vector<double> accumulationBuffer;$/;"	m	class:BinaryTreeSummation	typeref:typename:vector<double>
+acquireNumber	binary_tree.cpp	/^const double BinaryTreeSummation::acquireNumber(const uint64_t index) {$/;"	f	class:BinaryTreeSummation	typeref:typename:const double
+acquisitionCount	binary_tree.hpp	/^    long int acquisitionCount;$/;"	m	class:BinaryTreeSummation	typeref:typename:long int
+acquisitionDuration	binary_tree.hpp	/^    std::chrono::duration<double> acquisitionDuration;$/;"	m	class:BinaryTreeSummation	typeref:typename:std::chrono::duration<double>
+acquisitionTime	binary_tree.cpp	/^const double BinaryTreeSummation::acquisitionTime(void) const {$/;"	f	class:BinaryTreeSummation	typeref:typename:const double
+begin	binary_tree.hpp	/^    const uint64_t size,  begin, end;$/;"	m	class:BinaryTreeSummation	typeref:typename:const uint64_t
+buffer	binary_tree.hpp	/^    vector<MessageBufferEntry> buffer;$/;"	m	class:MessageBuffer	typeref:typename:vector<MessageBufferEntry>
+calculateRankIntersectingSummands	binary_tree.cpp	/^vector<uint64_t> BinaryTreeSummation::calculateRankIntersectingSummands(void) const {$/;"	f	class:BinaryTreeSummation	typeref:typename:vector<uint64_t>
+clusterSize	summation_strategy.hpp	/^    const int rank, clusterSize;$/;"	m	class:SummationStrategy	typeref:typename:const int
+distribute	summation_strategy.cpp	/^void SummationStrategy::distribute(vector<double> &values) {$/;"	f	class:SummationStrategy	typeref:typename:void
+end	binary_tree.hpp	/^    const uint64_t size,  begin, end;$/;"	m	class:BinaryTreeSummation	typeref:typename:const uint64_t
+entries	binary_tree.hpp	/^    array<MessageBufferEntry, MAX_MESSAGE_LENGTH> entries;$/;"	m	class:MessageBuffer	typeref:typename:array<MessageBufferEntry,MAX_MESSAGE_LENGTH>
+flush	binary_tree.cpp	/^void MessageBuffer::flush() {$/;"	f	class:MessageBuffer	typeref:typename:void
+get	binary_tree.cpp	/^const double MessageBuffer::get(const int sourceRank, const uint64_t index) {$/;"	f	class:MessageBuffer	typeref:typename:const double
+globalSize	summation_strategy.hpp	/^    const uint64_t globalSize;$/;"	m	class:SummationStrategy	typeref:typename:const uint64_t
+inbox	binary_tree.hpp	/^    map<uint64_t, double> inbox;$/;"	m	class:MessageBuffer	typeref:typename:map<uint64_t,double>
+index	binary_tree.hpp	/^    uint64_t index;$/;"	m	struct:MessageBufferEntry	typeref:typename:uint64_t
+isLocal	binary_tree.cpp	/^bool BinaryTreeSummation::isLocal(uint64_t index) const {$/;"	f	class:BinaryTreeSummation	typeref:typename:bool
+is_local_subtree_of_size	binary_tree.cpp	/^const bool BinaryTreeSummation::is_local_subtree_of_size(const uint64_t expectedSubtreeSize, con/;"	f	class:BinaryTreeSummation	typeref:typename:const bool
+largest_child_index	binary_tree.cpp	/^const uint64_t BinaryTreeSummation::largest_child_index(const uint64_t index) const {$/;"	f	class:BinaryTreeSummation	typeref:typename:const uint64_t
+messageBuffer	binary_tree.hpp	/^    MessageBuffer messageBuffer;$/;"	m	class:BinaryTreeSummation	typeref:typename:MessageBuffer
+n_summands	summation_strategy.hpp	/^    const vector<int> n_summands;$/;"	m	class:SummationStrategy	typeref:typename:const vector<int>
+nocheckAccumulate	binary_tree.cpp	/^double BinaryTreeSummation::nocheckAccumulate(void) {$/;"	f	class:BinaryTreeSummation	typeref:typename:double
+outbox	binary_tree.hpp	/^    vector<MessageBufferEntry> outbox;$/;"	m	class:MessageBuffer	typeref:typename:vector<MessageBufferEntry>
+parent	binary_tree.cpp	/^const uint64_t BinaryTreeSummation::parent(const uint64_t i) {$/;"	f	class:BinaryTreeSummation	typeref:typename:const uint64_t
+put	binary_tree.cpp	/^void MessageBuffer::put(const int targetRank, const uint64_t index, const double value) {$/;"	f	class:MessageBuffer	typeref:typename:void
+rank	summation_strategy.hpp	/^    const int rank, clusterSize;$/;"	m	class:SummationStrategy	typeref:typename:const int
+rankFromIndex	binary_tree.cpp	/^uint64_t BinaryTreeSummation::rankFromIndex(uint64_t index) const {$/;"	f	class:BinaryTreeSummation	typeref:typename:uint64_t
+rankIntersectingSummands	binary_tree.hpp	/^    const vector<uint64_t> rankIntersectingSummands;$/;"	m	class:BinaryTreeSummation	typeref:typename:const vector<uint64_t>
+receive	binary_tree.cpp	/^const void MessageBuffer::receive(const int sourceRank) {$/;"	f	class:MessageBuffer	typeref:typename:const void
+recursiveAccumulate	binary_tree.cpp	/^double BinaryTreeSummation::recursiveAccumulate(uint64_t index) {$/;"	f	class:BinaryTreeSummation	typeref:typename:double
+reqs	binary_tree.hpp	/^    vector<MPI_Request> reqs;$/;"	m	class:MessageBuffer	typeref:typename:vector<MPI_Request>
+size	binary_tree.hpp	/^    const uint64_t size,  begin, end;$/;"	m	class:BinaryTreeSummation	typeref:typename:const uint64_t
+startIndex	summation_strategy.hpp	/^    vector<int> startIndex;$/;"	m	class:SummationStrategy	typeref:typename:vector<int>
+subtree_size	binary_tree.cpp	/^const uint64_t BinaryTreeSummation::subtree_size(const uint64_t index) const {$/;"	f	class:BinaryTreeSummation	typeref:typename:const uint64_t
+summands	summation_strategy.hpp	/^    vector<double> summands;$/;"	m	class:SummationStrategy	typeref:typename:vector<double>
+targetRank	binary_tree.hpp	/^    int targetRank;$/;"	m	class:MessageBuffer	typeref:typename:int
+value	binary_tree.hpp	/^    double value;$/;"	m	struct:MessageBufferEntry	typeref:typename:double
+wait	binary_tree.cpp	/^void MessageBuffer::wait() {$/;"	f	class:MessageBuffer	typeref:typename:void
+~BinaryTreeSummation	binary_tree.cpp	/^BinaryTreeSummation::~BinaryTreeSummation() {$/;"	f	class:BinaryTreeSummation
+~SummationStrategy	summation_strategy.cpp	/^SummationStrategy::~SummationStrategy() {$/;"	f	class:SummationStrategy

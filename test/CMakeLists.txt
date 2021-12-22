@@ -15,6 +15,7 @@ add_executable(tests
     io_tests.cpp
     binary_tree_tests.cpp
     util_tests.cpp
+    distribution_tests.cpp
 )
 target_link_libraries(tests PRIVATE MPI::MPI_C Summation gtest_main)
 include(GoogleTest)

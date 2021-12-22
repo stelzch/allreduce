@@ -80,6 +80,23 @@ static void BM_iterative(benchmark::State& state) {
 }
 BENCHMARK(BM_iterative)->RangeMultiplier(8)->Range(1, 1 << 27);
 
+static void BM_noCheckIterative(benchmark::State& state) {
+    const int n = state.range(0);
+
+    // Prepare input data
+    vector<double> data;
+    data.reserve(n);
+    for(int i = 0; i < n; i++) data.push_back(i);
+
+    vector<int> n_summands = {n};
+    BinaryTreeSummation tree(0, n_summands);
+    tree.distribute(data);
+
+    for (auto _ : state) {
+       volatile double a = tree.nocheckAccumulate(); 
+    }
+}
+BENCHMARK(BM_noCheckIterative)->RangeMultiplier(8)->Range(1, 1 << 27);
 
 static void BM_recursive(benchmark::State& state) {
     const int n = state.range(0);

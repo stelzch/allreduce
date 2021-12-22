@@ -39,6 +39,8 @@ struct Distribution {
 
     static const Distribution from_string(const string description);
 
+    static const Distribution upDown(const uint64_t n, const uint64_t ranks);
+
     const uint64_t rankIntersectionCount() const;
 
     const double score() const;
@@ -50,6 +52,8 @@ struct Distribution {
     private:
         mutable uint64_t _rankIntersectionCount;
         mutable bool rankIntersectionCountValid = false;
+
+        static const uint64_t roundUp(const uint64_t index);
 
 };
 

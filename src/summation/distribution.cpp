@@ -84,7 +84,11 @@ const Distribution Distribution::lsb_cleared(const uint64_t n, const uint64_t ra
         while(lastIndex < proposedIndex
                 && varianceWithinBounds(proposedIndex - lastIndex, fairShare, variance)) {
             index = proposedIndex;
-            proposedIndex = BinaryTreeSummation::parent(index);
+            if (i % 2 == 0) {
+                proposedIndex = BinaryTreeSummation::parent(index);
+            } else {
+                proposedIndex = Distribution::roundUp(proposedIndex);
+            }
         }
 
         // By now, proposedIndex violates one of the two conditions above and the best we were able to
@@ -110,7 +114,6 @@ const Distribution Distribution::optimal(const uint64_t n, const uint64_t ranks)
     bool hasBeenDescending = false;
 
     for (double testedVariance = 1.0; testedVariance > 0.0; testedVariance -= 0.001) {
-        cout << testedVariance << endl;
         auto generated = Distribution::lsb_cleared(n, ranks, testedVariance);
 
         if (generated.score() < score) {
@@ -158,6 +161,10 @@ const Distribution Distribution::from_string(const string description) {
     return d;
 }
 
+static const Distribution upDown(const uint64_t n, const uint64_t ranks) {
+    
+}
+
 const uint64_t Distribution::rankIntersectionCount() const {
     if (rankIntersectionCountValid) {
         return _rankIntersectionCount;
@@ -181,6 +188,7 @@ const uint64_t Distribution::rankIntersectionCount() const {
     return totalRankIntersections;
 }
 
+
 const double Distribution::score() const {
     const double t_send = 110e-9;
     const double t_doubleadd = 2.44e-9;
@@ -199,4 +207,22 @@ const void Distribution::printDistribution() const {
         cout << ", " << *it;
     }
     cout << "]" << endl;
+}
+
+const uint64_t Distribution::roundUp(const uint64_t number) {
+    const int delta = ffsl(number);
+    // Search loop for first zero with an index greater than delta
+    for (int i = delta; i < sizeof(number) * 8; i++) {
+
+        // If we have found a bit, set it and reset all less significant bits
+        if ((number >> i) & 1) {
+           const uint64_t mask = ~((1 << i) - 1); // Clear all bits lower than i
+           const uint64_t roundedNumber = (number & mask) | (1 << i); // Set bit i
+
+           return roundedNumber;
+        }
+    }
+
+    // If the search is unsuccessful, return the input number.
+    return number;
 }

@@ -72,7 +72,6 @@ if __name__ == "__main__":
     datafiles = glob.glob("data/*psllh")
     cluster_size = args.cluster_size
     modes = ["--tree", "--allreduce", "--reproblas"] #"--baseline", 
-    expected_time_per_run = args.time_per_run # seconds for each benchmark execution
     flags = args.flags
     cluster_mode = args.cluster_mode
 

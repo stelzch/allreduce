@@ -1,3 +1,4 @@
+#include <random>
 #include <gtest/gtest.h>
 #include <vector>
 #include <cmath>
@@ -57,5 +58,30 @@ TEST(BinaryTreeTests, IterativeEqualToRecursive) {
 
         EXPECT_EQ(tree.accumulate(0), tree.recursiveAccumulate(0));
     }
+}
+
+TEST(BinaryTreeTests, rankFromIndex) {
+    const size_t n = 16 * 1024 * 1024 / sizeof(double);
+    const int m = 3;
+
+    vector<int> nSummands;
+    for (int i = 0; i < m; i++) {
+        nSummands.push_back(n / m);
+    }
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distrib(0, n - 1);
+
+    BinaryTreeSummation tree(0, nSummands);
+
+    for (int i = 0; i < 1000; i++) {
+        int idx = distrib(gen);
+
+        EXPECT_EQ(tree.rankFromIndexMap(idx),
+                tree.rankFromIndex(idx));
+    }
+
+
 
 }

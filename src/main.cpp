@@ -86,6 +86,7 @@ int main(int argc, char **argv) {
         ("f,file", "File name of the binary psllh file", cxxopts::value<string>())
         ("r,repetitions", "Repeat the calculation at most n times", cxxopts::value<unsigned long>()->default_value("1"))
         ("c,distribution", "Number distribution, can be even, optimal or optimized,<VARIANCE>. Only relevant in tree mode", cxxopts::value<string>()->default_value("even"))
+        ("n", "Use at most n numbers from the supplied data file", cxxopts::value<unsigned int>()->default_value(to_string(numeric_limits<unsigned int>::max())))
         ("v,verbose", "Be more verbose about calculations", cxxopts::value<bool>()->default_value("false"))
         ("d,debug", "Pause until debugger is attached to given rank", cxxopts::value<int>()->default_value("-1"))
         ("h,help", "Display this help message", cxxopts::value<bool>()->default_value("false"));
@@ -107,7 +108,7 @@ int main(int argc, char **argv) {
     }
 
     int debugRank = result["debug"].as<int>();
-    if(0 <= debugRank < c_size) {
+    if((0 <= debugRank) && (debugRank < c_size)) {
         Util::attach_debugger(c_rank == debugRank);
     }
 
@@ -134,6 +135,7 @@ int main(int argc, char **argv) {
         return -1;
     }
     bool verbose = result["verbose"].as<bool>();
+    unsigned int max_summands = result["n"].as<unsigned int>();
 
 
     vector<double> summands;
@@ -144,13 +146,13 @@ int main(int argc, char **argv) {
         } else {
             summands = IO::read_psllh(filename);
         }
-        assert(static_cast<long unsigned>(c_size) < summands.size());
         cout << "[IO] Loaded " << summands.size() << " summands from " << filename << endl;
+        summands.resize(std::min<unsigned int>(summands.size(), max_summands));
 
         Distribution d(0,0);
         bool initialized = false;
         if (distrib_mode == "even" || strategy_type != TREE) {
-            d = Distribution::even(summands.size(), c_size);
+            d = Distribution::even_remainder_on_last(summands.size(), c_size);
             initialized = true;
         } else if (distrib_mode == "optimal") {
             d = Distribution::optimal(summands.size(), c_size);
@@ -231,8 +233,6 @@ int main(int argc, char **argv) {
         }
     }
 
-    timepoints.push_back(std::chrono::high_resolution_clock::now());
-
     if (c_rank == 0 && repetitions != 0) {
         // Turn the timepoints into durations
         std::vector<double> durations;
@@ -248,12 +248,12 @@ int main(int argc, char **argv) {
                 return std::chrono::duration_cast<std::chrono::nanoseconds>(diff).count();
         });
 
-        cout << "durations = ";
-        for (auto x : durations) {
-            cout << x << ", ";
-        }
-        cout << endl;
 
+        printf("durations=");
+        for (auto i = 0UL; i < durations.size() - 1; i++) {
+            printf("%.8e,", durations[i]);
+        }
+        printf("%.8e\n", durations.back());
 
         output_result(sum);
 

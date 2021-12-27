@@ -30,7 +30,7 @@ struct Distribution {
      */
     static const Distribution even_remainder_on_last(uint64_t n, uint64_t ranks);
 
-    static const bool varianceWithinBounds(const uint64_t actualLength, const uint64_t intendedLength,
+    static const bool varianceWithinBounds(const uint64_t fairIndex, const uint64_t proposedIndex, const uint64_t fairShare,
             const float variance);
 
     static const Distribution lsb_cleared(const uint64_t n, const uint64_t ranks, const float variance);
@@ -47,9 +47,12 @@ struct Distribution {
 
     const void printDistribution() const;
 
+    static const uint64_t roundUp(const uint64_t index);
+
     private:
         mutable uint64_t _rankIntersectionCount;
         mutable bool rankIntersectionCountValid = false;
+
 
 };
 

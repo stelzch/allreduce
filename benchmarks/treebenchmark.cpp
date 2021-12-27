@@ -6,6 +6,8 @@
 #include <mpi.h>
 #include <chrono>
 #include <iostream>
+#include <random>
+#include <immintrin.h>
 
 using std::cout;
 using std::endl;
@@ -130,5 +132,83 @@ static void BM_accumulative(benchmark::State& state) {
     }
 }
 BENCHMARK(BM_accumulative)->RangeMultiplier(8)->Range(1, 1 << 27);
+
+
+__attribute__((optimize("O3"))) static void BM_avxsubtree8(benchmark::State& state) {
+    const size_t n = 1 * 256 * 1024 * 1024 / sizeof(double);
+    vector<double> results(n);
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> distrib(-1e14,1e14);
+
+    for (int i = 0; i < n; i++)
+        results[i] = distrib(gen);
+
+    volatile double result;
+
+    for (auto _ : state) {
+        for (size_t i = 0; i + 8 < n; i += 8) {
+            __m256d a = _mm256_loadu_pd(static_cast<double *>(&results[i]));
+            __m256d b = _mm256_loadu_pd(static_cast<double *>(&results[i + 4]));
+            __m256d level1Sum = _mm256_hadd_pd(a, b);
+
+            __m128d c = _mm256_extractf128_pd(level1Sum, 1); // Fetch upper 128bit
+            __m128d d = _mm256_castpd256_pd128(level1Sum); // Fetch lower 128bit
+            __m128d level2Sum = _mm_add_pd(c, d);
+
+            __m128d level3Sum = _mm_hadd_pd(level2Sum, level2Sum);
+
+            results[i / 8] = _mm_cvtsd_f64(level3Sum);
+        }
+    }
+
+}
+BENCHMARK(BM_avxsubtree8);
+
+__attribute__((optimize("O3"))) static void BM_subtree8(benchmark::State& state) {
+    const size_t n = 1 * 256 * 1024 * 1024 / sizeof(double);
+    assert(n % 8 == 0);
+    vector<double> results(n);
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> distrib(-1e14,1e14);
+
+    for (int i = 0; i < n; i++)
+        results[i] = distrib(gen);
+
+    volatile double result;
+
+    uint64_t counter = 0;
+
+    for (auto _ : state) {
+
+        for (int y = 0; y < 3; y++) {
+            const size_t stride = (1L << y);
+            size_t elementsWritten = 0;
+
+            for (size_t i = 0; elementsWritten < (n / 2 / stride); i += 2 * stride) {
+                results[elementsWritten++] = results[i] + results[i + stride];
+            }
+
+            size_t expected;
+            if (y == 0) {
+                expected = n / 2;
+            } else if (y == 1) {
+                expected = n / 4;
+            } else if (y == 2) {
+                expected = n / 8;
+            }
+
+            //printf("%li ?= %li\n", expected, elementsWritten);
+            //assert(expected == elementsWritten);
+        }
+
+    }
+
+}
+BENCHMARK(BM_subtree8);
+
 
 BENCHMARK_MAIN();

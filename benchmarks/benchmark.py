@@ -63,7 +63,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("Run benchmark")
     parser.add_argument("-e", "--executable", default="./build/src/RADTree", type=str)
     parser.add_argument("-np", "--cluster_size", default=os.cpu_count(), type=int)
-    parser.add_argument("-t", "--time_per_run", default = 30, type=float, help="Time to spend on each iteration of the benchmark")
     parser.add_argument("-f", "--flags", default="", type=str, help="Additional flags to pass to the executable under test")
     parser.add_argument("-d", "--description", default="", type=str, help="Annotation that will be put in result DB")
     parser.add_argument("--cluster-mode", help="Detect number of nodes and processors from environment", action='store_true')
@@ -72,7 +71,7 @@ if __name__ == "__main__":
     executable = args.executable
     datafiles = glob.glob("data/*psllh")
     cluster_size = args.cluster_size
-    modes = ["--tree", "--allreduce", "--baseline", "--reproblas"]
+    modes = ["--tree", "--allreduce", "--reproblas"] #"--baseline", 
     expected_time_per_run = args.time_per_run # seconds for each benchmark execution
     flags = args.flags
     cluster_mode = args.cluster_mode

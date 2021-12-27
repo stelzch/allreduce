@@ -85,11 +85,8 @@ protected:
             const uint64_t initialRemainingElements,
             const int y,
             const uint64_t maxX,
-            const double *targetBuffer) {
+            double *buffer) {
         uint64_t remainingElements = initialRemainingElements;
-        double buffer[8]; // TODO: optimize away this buffer
-
-        memcpy(buffer, targetBuffer, remainingElements * sizeof(double));
 
         for (int level = 0; level < 3; level++) {
             const int stride = 1 << (y - 1 + level);

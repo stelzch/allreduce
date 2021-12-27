@@ -299,50 +299,19 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
 
     uint64_t elementsInBuffer = n_local_elements;
 
+
+#ifndef AVX
     for (int y = 1; y <= maxY; y++) {
         uint64_t elementsWritten = 0;
 
         // Do one less iteration if we have a remainder
         const uint64_t maxI = (elementsInBuffer >> 1) << 1;
-
-#ifndef AVX
         for (uint64_t i = 0; i < maxI; i += 2) {
             const double a = accumulationBuffer[i];
             const double b = accumulationBuffer[i + 1];
 
             accumulationBuffer[elementsWritten++] = a + b;
         }
-#else
-        // Handwritten vectorization with AVX.
-        // We process 8 doubles (256bit) in each loop iteration:
-        // A B C D E F G H
-        uint64_t i = 0;
-        for (; i + 8 < maxI; i += 8) {
-            __m256d a = _mm256_load_pd(static_cast<double *>(&accumulationBuffer[i]));
-            __m256d b = _mm256_load_pd(static_cast<double *>(&accumulationBuffer[i + 4]));
-
-            __m256d c = _mm256_unpacklo_pd(a, b); // c = A E C G
-            __m256d d = _mm256_unpackhi_pd(a, b); // d = B F D H
-
-            const __m256d sum = _mm256_add_pd(c, d); // sum = A + B | E + F | C + D | G + H
-            _mm256_store_pd(&accumulationBuffer[elementsWritten], sum);
-
-            // Swap E+F and C+D. Because the loading works in 128 bit lanes, we need to
-            // untangle the result afterwards.
-            double temp;
-            temp = accumulationBuffer[elementsWritten + 1];
-            accumulationBuffer[elementsWritten + 1] = accumulationBuffer[elementsWritten + 2];
-            accumulationBuffer[elementsWritten + 2] = temp;
-
-            elementsWritten += 4;
-        }
-
-        // Unvectorized loop for the remainder
-        for (; i < maxI; i += 2) {
-            accumulationBuffer[elementsWritten++] = accumulationBuffer[i] + accumulationBuffer[i + 1];
-        }
-
-#endif
 
         // Deal with the remainder
         if (2 * elementsWritten < elementsInBuffer) {
@@ -363,6 +332,46 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
 
         elementsInBuffer = elementsWritten;
     }
+
+#else
+    // Handwritten vectorization with AVX.
+    for (int y = 1; y <= maxY; y += 3) {
+        uint64_t elementsWritten = 0;
+
+        for (uint64_t i = 0; i + 8 <= elementsInBuffer; i += 8) {
+            __m256d a = _mm256_load_pd(static_cast<double *>(&accumulationBuffer[i]));
+            __m256d b = _mm256_load_pd(static_cast<double *>(&accumulationBuffer[i+4]));
+            __m256d level1Sum = _mm256_hadd_pd(a, b);
+
+            __m128d c = _mm256_extractf128_pd(level1Sum, 1); // Fetch upper 128bit
+            __m128d d = _mm256_castpd256_pd128(level1Sum); // Fetch lower 128bit
+            __m128d level2Sum = _mm_add_pd(c, d);
+
+            __m128d level3Sum = _mm_hadd_pd(level2Sum, level2Sum);
+
+            accumulationBuffer[elementsWritten++] = _mm_cvtsd_f64(level3Sum);
+        }
+
+        // number of remaining elements
+        const uint64_t remainder = elementsInBuffer - 8 * elementsWritten;
+        assert(0 <= remainder);
+        assert(remainder < 8);
+
+        if (remainder > 0) {
+            const uint64_t bufferIdx = 8 * elementsWritten;
+            const uint64_t indexOfRemainingTree = index + bufferIdx * (1UL << (y - 1));
+            const double a = sum_remaining_8tree(indexOfRemainingTree,
+                    remainder, y, maxX,
+                    &accumulationBuffer[0] + bufferIdx);
+            accumulationBuffer[elementsWritten++] = a;
+
+        }
+
+        elementsInBuffer = elementsWritten;
+    }
+        
+
+#endif
     assert(elementsInBuffer == 1);
 
     return accumulationBuffer[0];

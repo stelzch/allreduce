@@ -122,10 +122,9 @@ BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
       end (begin +  size),
       rankIntersectingSummands(calculateRankIntersectingSummands()),
       acquisitionDuration(std::chrono::duration<double>::zero()),
-      acquisitionCount(0L)
+      acquisitionCount(0L),
+      accumulationBuffer(size + 8)
 {
-    accumulationBuffer = new (std::align_val_t(32)) double[size];
-
     /* Initialize start indices map */
     int startIndex = 0;
     int rankNumber = 0;
@@ -135,8 +134,6 @@ BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
     }
     // guardian element
     startIndices[startIndex] = rankNumber;
-
-    assert(accumulationBuffer % 32 == 0);
 
 #ifdef DEBUG_OUTPUT_TREE
     printf("Rank %lu has %lu summands, starting from index %lu to %lu\n", rank, size, begin, end);
@@ -148,7 +145,6 @@ BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
 }
 
 BinaryTreeSummation::~BinaryTreeSummation() {
-    delete[] accumulationBuffer;
 #ifdef ENABLE_INSTRUMENTATION
     cout << "Rank " << rank << " avg. acquisition time: "
         << acquisitionTime() / acquisitionCount << "  ns\n";
@@ -188,12 +184,9 @@ uint64_t BinaryTreeSummation::rankFromIndex(uint64_t index) const {
 uint64_t BinaryTreeSummation::rankFromIndexMap(const uint64_t index) const {
     auto it = startIndices.upper_bound(index);
 
-    if (it != startIndices.end()) {
-        const int nextRank = it->second;
-        return nextRank - 1;
-    } else {
-        throw logic_error(string("Number ") + to_string(index) + " cannot be found on any node");
-    }
+    assert(it != startIndices.end());
+    const int nextRank = it->second;
+    return nextRank - 1;
 }
 
 const double BinaryTreeSummation::acquireNumber(const uint64_t index) {
@@ -317,45 +310,11 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
     const uint64_t largest_local_index = min(maxX, end - 1);
     const uint64_t n_local_elements = largest_local_index + 1 - index;
 
-    memcpy(accumulationBuffer, &summands[index - begin], n_local_elements * sizeof(double));
+    memcpy(&accumulationBuffer[0], &summands[index - begin], n_local_elements * sizeof(double));
 
     uint64_t elementsInBuffer = n_local_elements;
 
 
-#ifndef AVX
-    for (int y = 1; y <= maxY; y++) {
-        uint64_t elementsWritten = 0;
-
-        // Do one less iteration if we have a remainder
-        const uint64_t maxI = (elementsInBuffer >> 1) << 1;
-        for (uint64_t i = 0; i < maxI; i += 2) {
-            const double a = accumulationBuffer[i];
-            const double b = accumulationBuffer[i + 1];
-
-            accumulationBuffer[elementsWritten++] = a + b;
-        }
-
-        // Deal with the remainder
-        if (2 * elementsWritten < elementsInBuffer) {
-            const uint64_t indexA = index + (elementsInBuffer - 1) * (1 << (y - 1));
-            const uint64_t indexB = index + (elementsInBuffer + 0) * (1 << (y - 1));
-            const double a = accumulationBuffer[elementsInBuffer - 1];
-
-            if (indexB > maxX) {
-                // the remainder is the last element of our tree, we just copy it over
-                accumulationBuffer[elementsWritten++] = a;
-            } else {
-                // otherwise, there is still one addition to calculate, but its second part is not local
-                assert(indexB >= end);
-                const double b = messageBuffer.get(rankFromIndex(index), index);
-                accumulationBuffer[elementsWritten++] = a + b;
-            }
-        }
-
-        elementsInBuffer = elementsWritten;
-    }
-
-#else
     // Handwritten vectorization with AVX.
     for (int y = 1; y <= maxY; y += 3) {
         uint64_t elementsWritten = 0;
@@ -392,8 +351,6 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
         elementsInBuffer = elementsWritten;
     }
         
-
-#endif
     assert(elementsInBuffer == 1);
 
     return accumulationBuffer[0];

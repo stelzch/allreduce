@@ -50,6 +50,7 @@ public:
 
     /** Determine which rank has the number with a given index */
     uint64_t rankFromIndex(uint64_t index) const;
+    uint64_t rankFromIndexMap(const uint64_t index) const;
 
     const double acquireNumber(const uint64_t index);
 
@@ -107,7 +108,7 @@ protected:
                     buffer[elementsWritten++] = a;
                 } else {
                     // indexB must be fetched from another rank
-                    const double b = messageBuffer.get(rankFromIndex(indexB), indexB);
+                    const double b = messageBuffer.get(rankFromIndexMap(indexB), indexB);
                     buffer[elementsWritten++] = a + b;
                 }
 
@@ -127,6 +128,7 @@ private:
     const vector<uint64_t> rankIntersectingSummands;
     double *accumulationBuffer;
     std::chrono::duration<double> acquisitionDuration;
+    std::map<uint64_t, int> startIndices;
     long int acquisitionCount;
 
     MessageBuffer messageBuffer;

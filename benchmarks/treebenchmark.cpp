@@ -1,4 +1,5 @@
 #include "strategies/binary_tree.hpp"
+#include "distribution.hpp"
 #include <benchmark/benchmark.h>
 #include <vector>
 #include <numeric>
@@ -210,5 +211,49 @@ __attribute__((optimize("O3"))) static void BM_subtree8(benchmark::State& state)
 }
 BENCHMARK(BM_subtree8);
 
+static void BM_rankFromIndex(benchmark::State& state) {
+    const size_t n = 16 * 1024 * 1024 / sizeof(double);
+    const int m = state.range(0);
+
+    vector<int> nSummands;
+    for (int i = 0; i < m; i++) {
+        nSummands.push_back(n / m);
+    }
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distrib(0, n - 1);
+
+    BinaryTreeSummation tree(0, nSummands);
+
+    for (auto _ : state) {
+        // Get random rank number
+        tree.rankFromIndex(distrib(gen));
+    }
+}
+BENCHMARK(BM_rankFromIndex)->RangeMultiplier(2)->Range(8, 4096);
+
+
+static void BM_rankFromIndexMap(benchmark::State& state) {
+    const size_t n = 16 * 1024 * 1024 / sizeof(double);
+    const int m = state.range(0);
+
+    vector<int> nSummands;
+    for (int i = 0; i < m; i++) {
+        nSummands.push_back(n / m);
+    }
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distrib(0, n - 1);
+
+    BinaryTreeSummation tree(0, nSummands);
+
+    for (auto _ : state) {
+        // Get random rank number
+        tree.rankFromIndexMap(distrib(gen));
+    }
+}
+BENCHMARK(BM_rankFromIndexMap)->RangeMultiplier(2)->Range(8, 4096);
 
 BENCHMARK_MAIN();

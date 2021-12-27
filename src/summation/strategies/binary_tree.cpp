@@ -125,6 +125,17 @@ BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
       acquisitionCount(0L)
 {
     accumulationBuffer = new (std::align_val_t(32)) double[size];
+
+    /* Initialize start indices map */
+    int startIndex = 0;
+    int rankNumber = 0;
+    for (const int& n : n_summands) {
+        startIndices[startIndex] = rankNumber++;
+        startIndex += n;
+    }
+    // guardian element
+    startIndices[startIndex] = -1;
+
     assert(accumulationBuffer % 32 == 0);
 
 #ifdef DEBUG_OUTPUT_TREE
@@ -172,6 +183,18 @@ uint64_t BinaryTreeSummation::rankFromIndex(uint64_t index) const {
 
 
     throw logic_error(string("Number ") + to_string(index) + " cannot be found on any node");
+}
+
+uint64_t BinaryTreeSummation::rankFromIndexMap(const uint64_t index) const {
+    auto it = startIndices.upper_bound(index);
+
+    if (it == startIndices.end()) {
+        throw logic_error(string("Number ") + to_string(index) + " cannot be found on any node");
+        return 42;
+    } else {
+        const int nextRank = it->second;
+        return nextRank - 1;
+    }
 }
 
 const double BinaryTreeSummation::acquireNumber(const uint64_t index) {

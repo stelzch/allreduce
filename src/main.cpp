@@ -20,6 +20,10 @@
 #include <timer.hpp>
 #include <vector>
 
+#ifdef SCOREP
+#include <scorep/SCOREP_User.h>
+#endif
+
 using namespace std;
 
 int c_rank = -1, c_size = -1;
@@ -225,9 +229,18 @@ int main(int argc, char **argv) {
     std::vector<std::chrono::high_resolution_clock::time_point> timepoints;
     timepoints.reserve(repetitions + 1);
     timepoints.push_back(std::chrono::high_resolution_clock::now());
+#ifdef SCOREP
+    SCOREP_USER_REGION_DEFINE(accumulation_region)
+#endif
 
     for (unsigned long int i = 0; i < repetitions; i++) {
+#ifdef SCOREP
+        SCOREP_USER_REGION_BEGIN(accumulation_region, "maccumulate", SCOREP_USER_REGION_TYPE_LOOP)
+#endif
         sum = strategy->accumulate();
+#ifdef SCOREP
+        SCOREP_USER_REGION_END(accumulation_region)
+#endif
         if (c_rank == 0) {
             timepoints.push_back(std::chrono::high_resolution_clock::now());
         }

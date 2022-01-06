@@ -1,4 +1,6 @@
 #include "summation_strategy.hpp"
+#include "util.hpp"
+#include <cassert>
 #include <cstdint>
 #include <vector>
 #include <chrono>
@@ -50,6 +52,7 @@ public:
 
     /** Determine which rank has the number with a given index */
     uint64_t rankFromIndex(uint64_t index) const;
+    uint64_t rankFromIndexMap(const uint64_t index) const;
 
     const double acquireNumber(const uint64_t index);
 
@@ -81,13 +84,53 @@ protected:
     const bool is_local_subtree_of_size(const uint64_t expectedSubtreeSize, const uint64_t i) const;
     const double accumulate_local_8subtree(const uint64_t startIndex) const;
 
+    inline const double sum_remaining_8tree(const uint64_t bufferStartIndex,
+            const uint64_t initialRemainingElements,
+            const int y,
+            const uint64_t maxX,
+            double *buffer) {
+        uint64_t remainingElements = initialRemainingElements;
+
+        for (int level = 0; level < 3; level++) {
+            const int stride = 1 << (y - 1 + level);
+            int elementsWritten = 0;
+            for (int i = 0; (i + 1) < remainingElements; i += 2) {
+                buffer[elementsWritten++] = buffer[i] + buffer[i + 1];
+            }
+
+
+            if (remainingElements % 2 == 1) {
+                const uint64_t bufferIndexA = remainingElements - 1;
+                const uint64_t bufferIndexB = remainingElements;
+                const uint64_t indexB = bufferStartIndex + bufferIndexB * stride;
+                const double a = buffer[bufferIndexA];
+
+                if (indexB > maxX) {
+                    // indexB is the last element because the subtree ends there
+                    buffer[elementsWritten++] = a;
+                } else {
+                    // indexB must be fetched from another rank
+                    const double b = messageBuffer.get(rankFromIndexMap(indexB), indexB);
+                    buffer[elementsWritten++] = a + b;
+                }
+
+                remainingElements += 1;
+            }
+
+            remainingElements /= 2;
+        }
+        assert(remainingElements == 1);
+
+        return buffer[0];
+    }
+
 private:
     const uint64_t size,  begin, end;
     const vector<uint64_t> rankIntersectingSummands;
     vector<double, Util::AlignedAllocator<double>> accumulationBuffer;
     std::chrono::duration<double> acquisitionDuration;
+    std::map<uint64_t, int> startIndices;
     long int acquisitionCount;
 
     MessageBuffer messageBuffer;
 };
-

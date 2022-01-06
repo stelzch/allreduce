@@ -52,11 +52,11 @@ if __name__ == "__main__":
     retcode = 0
     datafiles = glob.glob("data/*psllh")
     for datafile in datafiles:
-        if not check_reproducibility(datafile, "--baseline", True):
-            retcode = -1
+        #if not check_reproducibility(datafile, "--baseline", True):
+        #    retcode = -1
         if not check_reproducibility(datafile, "--tree", True):
             retcode = -1
-        if not check_reproducibility(datafile, "--reproblas", True):
-            retcode = -1
-        check_reproducibility(datafile, "--allreduce", False)
+        #if not check_reproducibility(datafile, "--reproblas", True):
+        #    retcode = -1
+        #check_reproducibility(datafile, "--allreduce", False)
     sys.exit(retcode)

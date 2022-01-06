@@ -48,7 +48,7 @@ const Distribution Distribution::even_remainder_on_last(uint64_t n, uint64_t ran
     for (uint64_t i = 0; i < ranks; i++) {
         d.startIndices[i] = index;
         
-        uint64_t n = (i ==  ranks - 1) ? (perRank + remainder) : perRank;
+        uint64_t n = (i >=  ranks - remainder) ? (perRank + 1) : perRank;
         d.nSummands[i] = n;
         index += n;
     }

@@ -123,8 +123,18 @@ BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
       rankIntersectingSummands(calculateRankIntersectingSummands()),
       acquisitionDuration(std::chrono::duration<double>::zero()),
       acquisitionCount(0L),
-      accumulationBuffer(size)
+      accumulationBuffer(size + 8)
 {
+    /* Initialize start indices map */
+    int startIndex = 0;
+    int rankNumber = 0;
+    for (const int& n : n_summands) {
+        startIndices[startIndex] = rankNumber++;
+        startIndex += n;
+    }
+    // guardian element
+    startIndices[startIndex] = rankNumber;
+
 #ifdef DEBUG_OUTPUT_TREE
     printf("Rank %lu has %lu summands, starting from index %lu to %lu\n", rank, size, begin, end);
     printf("Rank %lu rankIntersectingSummands: ", rank);
@@ -169,6 +179,14 @@ uint64_t BinaryTreeSummation::rankFromIndex(uint64_t index) const {
 
 
     throw logic_error(string("Number ") + to_string(index) + " cannot be found on any node");
+}
+
+uint64_t BinaryTreeSummation::rankFromIndexMap(const uint64_t index) const {
+    auto it = startIndices.upper_bound(index);
+
+    assert(it != startIndices.end());
+    const int nextRank = it->second;
+    return nextRank - 1;
 }
 
 const double BinaryTreeSummation::acquireNumber(const uint64_t index) {
@@ -294,75 +312,46 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
     const uint64_t largest_local_index = min(maxX, end - 1);
     const uint64_t n_local_elements = largest_local_index + 1 - index;
 
-    std::copy(summands.begin() + index - begin, summands.begin() + index - begin + n_local_elements,
-            accumulationBuffer.begin());
+    memcpy(&accumulationBuffer[0], &summands[index - begin], n_local_elements * sizeof(double));
 
     uint64_t elementsInBuffer = n_local_elements;
 
-    for (int y = 1; y <= maxY; y++) {
+
+    // Handwritten vectorization with AVX.
+    for (int y = 1; y <= maxY; y += 3) {
         uint64_t elementsWritten = 0;
 
-        // Do one less iteration if we have a remainder
-        const uint64_t maxI = (elementsInBuffer >> 1) << 1;
-
-#ifndef AVX
-        for (uint64_t i = 0; i < maxI; i += 2) {
-            const double a = accumulationBuffer[i];
-            const double b = accumulationBuffer[i + 1];
-
-            accumulationBuffer[elementsWritten++] = a + b;
-        }
-#else
-        // Handwritten vectorization with AVX.
-        // We process 8 doubles (256bit) in each loop iteration:
-        // A B C D E F G H
-        uint64_t i = 0;
-        for (; i + 8 < maxI; i += 8) {
+        for (uint64_t i = 0; i + 8 <= elementsInBuffer; i += 8) {
             __m256d a = _mm256_load_pd(static_cast<double *>(&accumulationBuffer[i]));
-            __m256d b = _mm256_load_pd(static_cast<double *>(&accumulationBuffer[i + 4]));
+            __m256d b = _mm256_load_pd(static_cast<double *>(&accumulationBuffer[i+4]));
+            __m256d level1Sum = _mm256_hadd_pd(a, b);
 
-            __m256d c = _mm256_unpacklo_pd(a, b); // c = A E C G
-            __m256d d = _mm256_unpackhi_pd(a, b); // d = B F D H
+            __m128d c = _mm256_extractf128_pd(level1Sum, 1); // Fetch upper 128bit
+            __m128d d = _mm256_castpd256_pd128(level1Sum); // Fetch lower 128bit
+            __m128d level2Sum = _mm_add_pd(c, d);
 
-            const __m256d sum = _mm256_add_pd(c, d); // sum = A + B | E + F | C + D | G + H
-            _mm256_store_pd(&accumulationBuffer[elementsWritten], sum);
+            __m128d level3Sum = _mm_hadd_pd(level2Sum, level2Sum);
 
-            // Swap E+F and C+D. Because the loading works in 128 bit lanes, we need to
-            // untangle the result afterwards.
-            double temp;
-            temp = accumulationBuffer[elementsWritten + 1];
-            accumulationBuffer[elementsWritten + 1] = accumulationBuffer[elementsWritten + 2];
-            accumulationBuffer[elementsWritten + 2] = temp;
-
-            elementsWritten += 4;
+            accumulationBuffer[elementsWritten++] = _mm_cvtsd_f64(level3Sum);
         }
 
-        // Unvectorized loop for the remainder
-        for (; i < maxI; i += 2) {
-            accumulationBuffer[elementsWritten++] = accumulationBuffer[i] + accumulationBuffer[i + 1];
-        }
+        // number of remaining elements
+        const uint64_t remainder = elementsInBuffer - 8 * elementsWritten;
+        assert(0 <= remainder);
+        assert(remainder < 8);
 
-#endif
-
-        // Deal with the remainder
-        if (2 * elementsWritten < elementsInBuffer) {
-            const uint64_t indexA = index + (elementsInBuffer - 1) * (1 << (y - 1));
-            const uint64_t indexB = index + (elementsInBuffer + 0) * (1 << (y - 1));
-            const double a = accumulationBuffer[elementsInBuffer - 1];
-
-            if (indexB > maxX) {
-                // the remainder is the last element of our tree, we just copy it over
-                accumulationBuffer[elementsWritten++] = a;
-            } else {
-                // otherwise, there is still one addition to calculate, but its second part is not local
-                assert(indexB >= end);
-                const double b = messageBuffer.get(rankFromIndex(indexB), indexB);
-                accumulationBuffer[elementsWritten++] = a + b;
-            }
+        if (remainder > 0) {
+            const uint64_t bufferIdx = 8 * elementsWritten;
+            const uint64_t indexOfRemainingTree = index + bufferIdx * (1UL << (y - 1));
+            const double a = sum_remaining_8tree(indexOfRemainingTree,
+                    remainder, y, maxX,
+                    &accumulationBuffer[0] + bufferIdx);
+            accumulationBuffer[elementsWritten++] = a;
         }
 
         elementsInBuffer = elementsWritten;
     }
+        
     assert(elementsInBuffer == 1);
 
     return accumulationBuffer[0];

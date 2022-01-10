@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <utility>
 
 using std::vector;
 
@@ -27,6 +28,10 @@ public:
     virtual double accumulate() = 0;
 
     virtual ~SummationStrategy();
+
+    virtual const std::pair<size_t, size_t> messageStat() const {
+        return std::make_pair(0, 0);
+    }
 
 protected:
     const vector<int> n_summands;

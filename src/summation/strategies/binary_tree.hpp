@@ -6,6 +6,7 @@
 #include <chrono>
 #include <array>
 #include <map>
+#include <utility>
 #include <mpi.h>
 #include <util.hpp>
 
@@ -31,6 +32,9 @@ public:
     void put(const int targetRank, const uint64_t index, const double value);
     const double get(const int sourceRank, const uint64_t index);
 
+    const size_t getAwaitedNumbers() const;
+    const size_t getSentMessages() const;
+
 protected:
     array<MessageBufferEntry, MAX_MESSAGE_LENGTH> entries;
     map<uint64_t, double> inbox;
@@ -38,6 +42,9 @@ protected:
     vector<MessageBufferEntry> outbox;
     vector<MessageBufferEntry> buffer;
     vector<MPI_Request> reqs;
+    size_t awaitedNumbers;
+    size_t sentMessages;
+    bool sendBufferClear;
 };
 
 class BinaryTreeSummation : public SummationStrategy {
@@ -123,6 +130,9 @@ protected:
 
         return buffer[0];
     }
+
+    const std::pair<size_t, size_t> messageStat() const;
+
 
 private:
     const uint64_t size,  begin, end;

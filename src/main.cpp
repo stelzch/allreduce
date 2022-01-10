@@ -246,6 +246,19 @@ int main(int argc, char **argv) {
         }
     }
 
+    size_t stat[] {0, 0};
+    if (verbose && strategy_type == TREE) {
+        const auto msgCount = strategy->messageStat();
+
+        MPI_Reduce(&msgCount.first, stat, 2, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+
+        if (c_rank == 0) {
+            printf("sentMessages=%li\nawaitedMessages=%li\nbufferPercentage=%f\n", stat[1], stat[0], stat[0] / static_cast<double>(stat[1]));
+        }
+
+    }
+
+
     if (c_rank == 0 && repetitions != 0) {
         // Turn the timepoints into durations
         std::vector<double> durations;

@@ -27,7 +27,12 @@ using namespace std::string_literals;
 
 const int MESSAGEBUFFER_MPI_TAG = 1;
 
-MessageBuffer::MessageBuffer() : targetRank(-1), inbox() {
+MessageBuffer::MessageBuffer() : targetRank(-1),
+    inbox(),
+    awaitedNumbers(0),
+    sentMessages(0),
+    sendBufferClear(true)
+    {
     outbox.reserve(MAX_MESSAGE_LENGTH + 1);
     buffer.resize(MAX_MESSAGE_LENGTH);
     reqs.reserve(16);
@@ -39,6 +44,7 @@ void MessageBuffer::wait() {
     }
 
     reqs.clear();
+    sendBufferClear = true;
 }
 
 
@@ -52,9 +58,11 @@ void MessageBuffer::flush() {
     assert(0 < targetRank < 128);
     MPI_Isend(static_cast<void *>(&outbox[0]), messageByteSize, MPI_BYTE, targetRank,
             MESSAGEBUFFER_MPI_TAG, MPI_COMM_WORLD, &reqs.back());
+    sentMessages++;
 
     targetRank = -1;
     outbox.clear();
+    sendBufferClear = false;
 }
 
 const void MessageBuffer::receive(const int sourceRank) {
@@ -63,6 +71,7 @@ const void MessageBuffer::receive(const int sourceRank) {
 
     MPI_Recv(static_cast<void *>(&buffer[0]), sizeof(MessageBufferEntry) * MAX_MESSAGE_LENGTH, MPI_BYTE,
             sourceRank, MESSAGEBUFFER_MPI_TAG, MPI_COMM_WORLD, &status);
+    awaitedNumbers++;
 
     const int receivedEntries = status._ucount / sizeof(MessageBufferEntry);
 
@@ -75,6 +84,11 @@ const void MessageBuffer::receive(const int sourceRank) {
 void MessageBuffer::put(const int targetRank, const uint64_t index, const double value) {
     if (outbox.size() >= MAX_MESSAGE_LENGTH || this->targetRank != targetRank) {
         flush();
+    }
+
+    /* Since we send asynchronously, we must check whether the buffer can currently be written to */
+    if(!sendBufferClear) {
+        wait();
     }
 
     if (this->targetRank == -1) {
@@ -112,6 +126,14 @@ const double MessageBuffer::get(const int sourceRank, const uint64_t index) {
     double result = inbox[index];
     inbox.erase(index);
     return result;
+}
+
+const size_t MessageBuffer::getAwaitedNumbers() const {
+    return awaitedNumbers;
+}
+
+const size_t MessageBuffer::getSentMessages() const{
+    return sentMessages;
 }
 
 
@@ -424,4 +446,8 @@ const double BinaryTreeSummation::accumulate_local_8subtree(const uint64_t start
     const double level2b = level1c + level1d;
 
     return level2a + level2b;
+}
+
+const std::pair<size_t, size_t> BinaryTreeSummation::messageStat() const {
+    return std::make_pair(messageBuffer.getAwaitedNumbers(), messageBuffer.getSentMessages());
 }

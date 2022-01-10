@@ -31,6 +31,7 @@ MessageBuffer::MessageBuffer() : targetRank(-1),
     inbox(),
     awaitedNumbers(0),
     sentMessages(0),
+    sentSummands(0),
     sendBufferClear(true)
     {
     outbox.reserve(MAX_MESSAGE_LENGTH + 1);
@@ -101,6 +102,8 @@ void MessageBuffer::put(const int targetRank, const uint64_t index, const double
     outbox.push_back(e);
 
     if (outbox.size() == MAX_MESSAGE_LENGTH) flush();
+
+    sentSummands++;
 }
 
 const double MessageBuffer::get(const int sourceRank, const uint64_t index) {
@@ -128,12 +131,23 @@ const double MessageBuffer::get(const int sourceRank, const uint64_t index) {
     return result;
 }
 
-const size_t MessageBuffer::getAwaitedNumbers() const {
-    return awaitedNumbers;
-}
+const void MessageBuffer::printStats() const {
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-const size_t MessageBuffer::getSentMessages() const{
-    return sentMessages;
+    size_t globalStats[] {0, 0, 0};
+    size_t localStats[] {sentMessages, sentMessages, sentSummands};
+
+    MPI_Reduce(localStats, globalStats, 3, MPI_LONG, MPI_SUM,
+            0, MPI_COMM_WORLD);
+
+    if (rank == 0) {
+        printf("sentMessages=%li\naverageSummandsPerMessage=%f\n",
+                globalStats[0],
+                globalStats[2] / static_cast<double>(globalStats[0]));
+
+    }
+
 }
 
 
@@ -250,7 +264,7 @@ vector<uint64_t> BinaryTreeSummation::calculateRankIntersectingSummands(void) co
     */
 double BinaryTreeSummation::accumulate(void) {
     for (auto summand : rankIntersectingSummands) {
-        if (subtree_size(summand) > 64) {
+        if (subtree_size(summand) > 32) {
             // If we are about to do some considerable amount of work, make sure
             // the send buffer is empty so noone is waiting for our results
             messageBuffer.flush();
@@ -448,6 +462,6 @@ const double BinaryTreeSummation::accumulate_local_8subtree(const uint64_t start
     return level2a + level2b;
 }
 
-const std::pair<size_t, size_t> BinaryTreeSummation::messageStat() const {
-    return std::make_pair(messageBuffer.getAwaitedNumbers(), messageBuffer.getSentMessages());
+const void BinaryTreeSummation::printStats() const {
+    messageBuffer.printStats();
 }

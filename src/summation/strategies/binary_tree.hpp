@@ -32,8 +32,7 @@ public:
     void put(const int targetRank, const uint64_t index, const double value);
     const double get(const int sourceRank, const uint64_t index);
 
-    const size_t getAwaitedNumbers() const;
-    const size_t getSentMessages() const;
+    const void printStats(void) const;
 
 protected:
     array<MessageBufferEntry, MAX_MESSAGE_LENGTH> entries;
@@ -44,6 +43,7 @@ protected:
     vector<MPI_Request> reqs;
     size_t awaitedNumbers;
     size_t sentMessages;
+    size_t sentSummands;
     bool sendBufferClear;
 };
 
@@ -81,6 +81,8 @@ public:
     double accumulate(uint64_t index);
     double recursiveAccumulate(const uint64_t index);
     double nocheckAccumulate(void);
+
+    const void printStats(void) const;
 
 protected:
     const uint64_t largest_child_index(const uint64_t index) const;
@@ -130,8 +132,6 @@ protected:
 
         return buffer[0];
     }
-
-    const std::pair<size_t, size_t> messageStat() const;
 
 
 private:

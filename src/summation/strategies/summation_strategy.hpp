@@ -29,8 +29,7 @@ public:
 
     virtual ~SummationStrategy();
 
-    virtual const std::pair<size_t, size_t> messageStat() const {
-        return std::make_pair(0, 0);
+    virtual const void printStats(void) const {
     }
 
 protected:

@@ -7,7 +7,6 @@ import platform
 import zipfile
 import subprocess
 import glob
-from pycubexr import CubexParser
 from benchmark import grep_number, init_db
 
 def get_n(datafile):
@@ -19,24 +18,6 @@ def get_n(datafile):
             n_summands = len(f.readlines()) - 1
 
         return n_summands
-
-# Return [number of messages, number of awaited messages, bytes_sent] or None
-def get_message_stats(cubefile):
-
-    if not os.path.exists(cubefile):
-        return None
-
-    with CubexParser(cubefile) as p:
-        visits = p.get_metric_values(p.get_metric_by_name("visits"))
-        bytes_sent = p.get_metric_values(p.get_metric_by_name("bytes_sent"))
-
-        r_isend = p.get_region_by_name("MPI_Isend")
-        r_wait = p.get_region_by_name("MPI_Wait")
-
-        def total(region, metric):
-            return sum([sum(metric.cnode_values(cnode)) for cnode in p.get_cnodes_for_region(region.id)])
-
-        return [total(r_isend, visits), total(r_wait, visits), total(r_isend, bytes_sent)]
 
 
 if __name__ == '__main__':
@@ -121,24 +102,24 @@ if __name__ == '__main__':
         output = r.stdout.decode("utf-8")
         time = grep_number("avg", output)
         stddev = grep_number("stddev", output)
-
+        sentMessages = grep_number("sentMessages", output)
+        avgSummandsPerMessage = grep_number("averageSummandsPerMessage", output)
+        
         cur.execute('INSERT INTO results(run_id, datafile, n_summands, repetitions, mode, time_ns, stddev, output, ranks)' \
                 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 (run_id, datafile, n, repetitions, mode[2:], time, stddev, output, m))
         con.commit()
+
+        result_id = cur.execute("SELECT MAX(id) FROM results").fetchall()[0][0]
+        cur.execute('INSERT INTO messages(result_id, messages_sent, avg_summands_per_message) VALUES(?, ?, ?)',
+                (result_id, sentMessages, avgSummandsPerMessage))
+        con.commit()
+
+
         if scorep:
             # Write files to archive
             for f in glob.glob(scorep_dir + '/*'):
                 archive.write(f)
-            # Write message count in db
-            r = get_message_stats(scorep_dir + '/profile.cubex')
-            if r == None:
-                print("[ERROR] Could not read cubex file")
-                continue
-            result_id = cur.execute("SELECT MAX(id) FROM results").fetchall()[0][0]
-            cur.execute('INSERT INTO messages(result_id, messages_sent, messages_awaited, bytes_sent) VALUES(?, ?, ?, ?)',
-                    (result_id, *r))
-            con.commit()
             shutil.rmtree("./" + scorep_dir)
 
 

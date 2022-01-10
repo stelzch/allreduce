@@ -44,8 +44,7 @@ def init_db(cur):
     CREATE TABLE IF NOT EXISTS messages (
         result_id INTEGER,
         messages_sent INTEGER,
-        messages_awaited INTEGER,
-        bytes_sent INTEGER,
+        avg_summands_per_message REAL,
         FOREIGN KEY (result_id) REFERENCES results ON DELETE CASCADE
     );
     """)

@@ -40,6 +40,15 @@ def init_db(cur):
         FOREIGN KEY (result_id) REFERENCES results ON DELETE CASCADE
     );
     """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS messages (
+        result_id INTEGER,
+        messages_sent INTEGER,
+        messages_awaited INTEGER,
+        bytes_sent INTEGER,
+        FOREIGN KEY (result_id) REFERENCES results ON DELETE CASCADE
+    );
+    """)
 
 def grep_number(name, string):
     regexp = f"^{name}=([+\-0-9.e]+)$"

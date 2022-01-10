@@ -1,10 +1,14 @@
+import shutil
 import os
 import sqlite3
 import argparse
 import sys
 import platform
+import zipfile
 import subprocess
-from benchmark import grep_number
+import glob
+from pycubexr import CubexParser
+from benchmark import grep_number, init_db
 
 def get_n(datafile):
     if datafile.endswith('binpsllh'):
@@ -16,6 +20,25 @@ def get_n(datafile):
 
         return n_summands
 
+# Return [number of messages, number of awaited messages, bytes_sent] or None
+def get_message_stats(cubefile):
+
+    if not os.path.exists(cubefile):
+        return None
+
+    with CubexParser(cubefile) as p:
+        visits = p.get_metric_values(p.get_metric_by_name("visits"))
+        bytes_sent = p.get_metric_values(p.get_metric_by_name("bytes_sent"))
+
+        r_isend = p.get_region_by_name("MPI_Isend")
+        r_wait = p.get_region_by_name("MPI_Wait")
+
+        def total(region, metric):
+            return sum([sum(metric.cnode_values(cnode)) for cnode in p.get_cnodes_for_region(region.id)])
+
+        return [total(r_isend, visits), total(r_wait, visits), total(r_isend, bytes_sent)]
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("Perform a benchmark to determine weak/strong scaling")
     parser.add_argument("--executable", default="./build/src/RADTree", type=str)
@@ -26,6 +49,7 @@ if __name__ == '__main__':
     parser.add_argument("--step", type=int, default=1, help="Vary processor count by this step size")
     parser.add_argument("--min", type=int, default=1, help="Minimum number of ranks")
     parser.add_argument("--max", type=int, default=os.cpu_count(), help="Maximum number of ranks")
+    parser.add_argument("--scorep", action="store_true", help="Collect ScoreP metrics")
 
     args = parser.parse_args()
     executable = args.executable
@@ -36,6 +60,7 @@ if __name__ == '__main__':
     weak = args.weak
     strong = args.strong
     n_cutoff = args.n
+    scorep = args.scorep
 
 
     if not os.path.exists(datafile):
@@ -56,6 +81,7 @@ if __name__ == '__main__':
 
     con = sqlite3.connect('benchmarks/results.db')
     cur = con.cursor()
+    init_db(cur)
     git_result = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True)
     revision = str(git_result.stdout, 'utf-8') if git_result.returncode == 0 else "NONE"
 
@@ -63,6 +89,11 @@ if __name__ == '__main__':
             (platform.node(), revision.strip(), os.cpu_count(), description, ""))
     con.commit()
     run_id = cur.execute("SELECT MAX(ROWID) FROM runs").fetchall()[0][0]
+
+    archive = None
+    if scorep:
+        archive = zipfile.ZipFile('scorep_data.zip', mode='a', compression=zipfile.ZIP_LZMA)
+
 
     ms = list(range(0 if m_min == 1 else m_min, m_max + 1, m_step))
     if m_step == 1:
@@ -82,7 +113,10 @@ if __name__ == '__main__':
         flags = f"-n {n}"
         cmd = f"mpirun {opts} {executable} -f {datafile} {mode} -r {repetitions} {flags} 2>&1"
         print(f"\t{cmd}")
-        r = subprocess.run(cmd, shell=True, capture_output=True)
+        env = dict(os.environ)
+        scorep_dir = f"scorep_run={run_id}_n={n}_m={m}"
+        env["SCOREP_EXPERIMENT_DIRECTORY"] = scorep_dir
+        r = subprocess.run(cmd, env=env, shell=True, capture_output=True)
         r.check_returncode()
         output = r.stdout.decode("utf-8")
         time = grep_number("avg", output)
@@ -92,4 +126,22 @@ if __name__ == '__main__':
                 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 (run_id, datafile, n, repetitions, mode[2:], time, stddev, output, m))
         con.commit()
+        if scorep:
+            # Write files to archive
+            for f in glob.glob(scorep_dir + '/*'):
+                archive.write(f)
+            # Write message count in db
+            r = get_message_stats(scorep_dir + '/profile.cubex')
+            if r == None:
+                print("[ERROR] Could not read cubex file")
+                continue
+            result_id = cur.execute("SELECT MAX(id) FROM results").fetchall()[0][0]
+            cur.execute('INSERT INTO messages(result_id, messages_sent, messages_awaited, bytes_sent) VALUES(?, ?, ?, ?)',
+                    (result_id, *r))
+            con.commit()
+            shutil.rmtree("./" + scorep_dir)
+
+
+    if scorep:
+        archive.close()
 

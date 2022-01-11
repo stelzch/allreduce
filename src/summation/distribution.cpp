@@ -9,6 +9,9 @@
 #include <string>
 #include <numeric>
 #include <sstream>
+extern "C" {
+#include <strings.h>
+}
 
 using std::vector;
 using std::cout;

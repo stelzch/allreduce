@@ -379,24 +379,9 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
         if (remainder > 0) {
             const uint64_t bufferIdx = 8 * elementsWritten;
             const uint64_t indexOfRemainingTree = index + bufferIdx * (1UL << (y - 1));
-            double a;
-            if (remainder == 1) {
-                    double a = sum_remaining_8tree<1>(indexOfRemainingTree, y, maxX, &accumulationBuffer[0] + bufferIdx);
-            } else if (remainder == 2) {
-                    double a = sum_remaining_8tree<2>(indexOfRemainingTree, y, maxX, &accumulationBuffer[0] + bufferIdx);
-            } else if (remainder == 3) {
-                    double a = sum_remaining_8tree<3>(indexOfRemainingTree, y, maxX, &accumulationBuffer[0] + bufferIdx);
-            } else if (remainder == 4) {
-                    double a = sum_remaining_8tree<4>(indexOfRemainingTree, y, maxX, &accumulationBuffer[0] + bufferIdx);
-            } else if (remainder == 5) {
-                    double a = sum_remaining_8tree<5>(indexOfRemainingTree, y, maxX, &accumulationBuffer[0] + bufferIdx);
-            } else if (remainder == 6) {
-                    double a = sum_remaining_8tree<6>(indexOfRemainingTree, y, maxX, &accumulationBuffer[0] + bufferIdx);
-            } else if (remainder == 7) {
-                    double a = sum_remaining_8tree<7>(indexOfRemainingTree, y, maxX, &accumulationBuffer[0] + bufferIdx);
-            } else {
-                    assert(0); // Should never happen
-            }
+            const double a = sum_remaining_8tree(indexOfRemainingTree,
+                    remainder, y, maxX,
+                    &accumulationBuffer[0] + bufferIdx);
             accumulationBuffer[elementsWritten++] = a;
         }
 

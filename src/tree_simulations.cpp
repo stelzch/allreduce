@@ -10,7 +10,6 @@
 
 using namespace std;
 
-
 int main(int argc, char **argv) {
     if (argc != 4) {
         cout << "Usage: " << argv[0] << " <number of summands> <number of ranks> <variance>" << endl;

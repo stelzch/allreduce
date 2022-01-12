@@ -1,8 +1,8 @@
 from setuptools import setup, Extension
 
 module1 = Extension('radtree',
-        sources=['tree.cpp'],
-        extra_compile_args=["-O3", "-fopenmp"],
+        sources=['tree.cpp', '../../src/critical_path.cpp'],
+        extra_compile_args=["-O3", "-fopenmp", "-I../../src"],
         extra_link_args=['-lgomp'])
 
 setup(name='RADTree',

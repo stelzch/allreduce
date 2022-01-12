@@ -93,8 +93,8 @@ protected:
     const bool is_local_subtree_of_size(const uint64_t expectedSubtreeSize, const uint64_t i) const;
     const double accumulate_local_8subtree(const uint64_t startIndex) const;
 
-    inline const double sum_remaining_8tree(const uint64_t bufferStartIndex,
-            const uint64_t initialRemainingElements,
+    template<int initialRemainingElements>
+    const double sum_remaining_8tree(const uint64_t bufferStartIndex,
             const int y,
             const uint64_t maxX,
             double *buffer) {

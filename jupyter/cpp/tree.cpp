@@ -7,6 +7,7 @@
 #include <vector>
 #include <Python.h>
 #include <iostream>
+#include "critical_path.hpp"
 
 using std::cout;
 using std::endl;
@@ -193,11 +194,52 @@ static PyObject *RADTree_message_count(PyObject *self, PyObject *args) {
 }
 
 
+static PyObject *RADTree_critical_path(PyObject *self, PyObject *args) {
+    PyObject *n_list;
+    uint64_t m;
+    double t_send;
+    double t_add;
+
+
+    if(!PyArg_ParseTuple(args, "Okdd", &n_list, &m, &t_send, &t_add))
+        return NULL;
+
+    if(!PyList_Check(n_list))
+        return NULL;
+
+    const size_t length = PyList_Size(n_list);
+    std::vector<long int> n_vec(length);
+    std::vector<double> results(length);
+    for (size_t i = 0; i < length; i++) {
+        n_vec[i] = PyLong_AsLong(PyList_GetItem(n_list, i));
+    }
+
+    #pragma omp parallel for
+    for (int i = 0; i < length; i++) {
+        Info info(n_vec[i], m);
+        info.t_send = t_send;
+        info.t_add = t_add;
+        results[i] = info.time();
+    }
+
+
+    PyObject *resultList = PyList_New(results.size());
+    for (size_t i = 0; i < results.size(); i++) {
+        PyList_SetItem(resultList, i, PyLong_FromLong(results[i]));
+    }
+
+    return resultList;
+
+}
+
+
 static PyMethodDef RADTreeMethods[] = {
     {"message_count", RADTree_message_count, METH_VARARGS,
         "Get the number of messages"},
     {"message_count_remainder_at_end", RADTree_message_count_remainder_at_end, METH_VARARGS,
         "Get the number of messages but put the remainder on the last few ranks."},
+    {"critical_path", RADTree_critical_path, METH_VARARGS,
+        "Get runtime estimate"},
     {NULL, NULL, 0, NULL}
 };
 

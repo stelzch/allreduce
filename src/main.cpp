@@ -91,6 +91,7 @@ int main(int argc, char **argv) {
         ("r,repetitions", "Repeat the calculation at most n times", cxxopts::value<unsigned long>()->default_value("1"))
         ("c,distribution", "Number distribution, can be even, optimal or optimized,<VARIANCE>. Only relevant in tree mode", cxxopts::value<string>()->default_value("even"))
         ("n", "Use at most n numbers from the supplied data file", cxxopts::value<unsigned int>()->default_value(to_string(numeric_limits<unsigned int>::max())))
+        ("m", "Use at most m ranks", cxxopts::value<int>()->default_value(to_string(numeric_limits<int>::max())))
         ("v,verbose", "Be more verbose about calculations", cxxopts::value<bool>()->default_value("false"))
         ("d,debug", "Pause until debugger is attached to given rank", cxxopts::value<int>()->default_value("-1"))
         ("h,help", "Display this help message", cxxopts::value<bool>()->default_value("false"));
@@ -121,10 +122,10 @@ int main(int argc, char **argv) {
         strategy_type = ALLREDUCE;
     } else if (result["baseline"].as<bool>()) {
         strategy_type = BASELINE;
-    } else if (result["tree"].as<bool>()) {
-        strategy_type = TREE;
     } else if (result["reproblas"].as<bool>()) {
         strategy_type = REPROBLAS;
+    } else if (result["tree"].as<bool>()) {
+        strategy_type = TREE;
     } else {
         cli_error(options, "Must specify at least one of --allreduce, --baseline or --tree!");
         return -1;
@@ -140,6 +141,13 @@ int main(int argc, char **argv) {
     }
     bool verbose = result["verbose"].as<bool>();
     unsigned int max_summands = result["n"].as<unsigned int>();
+    int max_ranks = result["m"].as<int>();
+
+    if (max_ranks < 1) {
+        cerr << "[ERROR] cluster size must be positive integer" << endl;
+        return -1;
+    }
+
 
 
     vector<double> summands;
@@ -155,17 +163,18 @@ int main(int argc, char **argv) {
 
         Distribution d(0,0);
         bool initialized = false;
+        unsigned int targetClusterSize = std::min<int>(max_ranks, c_size);
         if (distrib_mode == "even" || strategy_type != TREE) {
-            d = Distribution::even_remainder_on_last(summands.size(), c_size);
+            d = Distribution::even_remainder_on_last(summands.size(), targetClusterSize);
             initialized = true;
         } else if (distrib_mode == "optimal") {
-            d = Distribution::optimal(summands.size(), c_size);
+            d = Distribution::optimal(summands.size(), targetClusterSize);
             initialized = true;
         } else if (distrib_mode.starts_with("manual,")) {
             d = Distribution::from_string(distrib_mode.substr(7));
 
             if (d.n != static_cast<uint64_t>(summands.size())
-                    || d.ranks != static_cast<uint64_t>(c_size)) {
+                    || d.ranks != static_cast<uint64_t>(targetClusterSize)) {
                 cli_error(options, "Distribution did not match dataset or cluster");
             } else {
                 initialized = true;
@@ -178,22 +187,28 @@ int main(int argc, char **argv) {
                 cli_error(options, "Variance of optimized distribution mode must be from (0, 1]");
             }
 
-            d = Distribution::lsb_cleared(summands.size(), c_size, variance);
+            d = Distribution::lsb_cleared(summands.size(), targetClusterSize, variance);
             initialized = true;
         } else {
             cli_error(options, "Invalid distribution mode: " + distrib_mode);
         }
 
         if(initialized) {
+            // Resize to actual cluster size, fill with zeros where necessary.
             summands_per_rank.resize(c_size);
-            for (int i = 0; i < c_size; i++)
+            for (int i = 0; i < targetClusterSize; i++)
                 summands_per_rank[i] = static_cast<int>(d.nSummands[i]);
 
         }
 
         if (verbose) {
-            d.printDistribution();
             d.printScore();
+
+            printf("[");
+            for (int i = 0; i < summands_per_rank.size(); i++) {
+                    printf((i == 0) ? "%d" : ", %d", summands_per_rank[i]);
+            }
+            printf("]\n");
         }
     }
 
@@ -207,15 +222,19 @@ int main(int argc, char **argv) {
     switch(strategy_type) {
         case ALLREDUCE:
             strategy = std::make_unique<AllreduceSummation>(c_rank, summands_per_rank);
+            cout << "Strategy: Allreduce" << endl;
             break;
         case BASELINE:
             strategy = std::make_unique<BaselineSummation>(c_rank, summands_per_rank);
+            cout << "Strategy: Baseline" << endl;
             break;
         case TREE:
             strategy = std::make_unique<BinaryTreeSummation>(c_rank, summands_per_rank);
+            cout << "Strategy: Tree" << endl;
             break;
         case REPROBLAS:
             strategy = std::make_unique<ReproBLASSummation>(c_rank, summands_per_rank);
+            cout << "Strategy: ReproBLAS" << endl;
             break;
     }
 
@@ -229,18 +248,9 @@ int main(int argc, char **argv) {
     std::vector<std::chrono::high_resolution_clock::time_point> timepoints;
     timepoints.reserve(repetitions + 1);
     timepoints.push_back(std::chrono::high_resolution_clock::now());
-#ifdef SCOREP
-    SCOREP_USER_REGION_DEFINE(accumulation_region)
-#endif
 
     for (unsigned long int i = 0; i < repetitions; i++) {
-#ifdef SCOREP
-        SCOREP_USER_REGION_BEGIN(accumulation_region, "maccumulate", SCOREP_USER_REGION_TYPE_LOOP)
-#endif
         sum = strategy->accumulate();
-#ifdef SCOREP
-        SCOREP_USER_REGION_END(accumulation_region)
-#endif
         if (c_rank == 0) {
             timepoints.push_back(std::chrono::high_resolution_clock::now());
         }

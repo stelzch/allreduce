@@ -31,6 +31,7 @@ if __name__ == '__main__':
     parser.add_argument("--min", type=int, default=1, help="Minimum number of ranks")
     parser.add_argument("--max", type=int, default=os.cpu_count(), help="Maximum number of ranks")
     parser.add_argument("--scorep", action="store_true", help="Collect ScoreP metrics")
+    parser.add_argument("--mode", type=str, help="computation mode", default="tree")
 
     args = parser.parse_args()
     executable = args.executable
@@ -42,6 +43,7 @@ if __name__ == '__main__':
     strong = args.strong
     n_cutoff = args.n
     scorep = args.scorep
+    mode = args.mode
 
 
     if not os.path.exists(datafile):
@@ -89,10 +91,9 @@ if __name__ == '__main__':
         print(f"n={n}, m={m}")
 
         opts = f"--use-hwthread-cpus -np {m}"
-        mode = "--tree"
         repetitions = "100"
         flags = f"-n {n}"
-        cmd = f"mpirun {opts} {executable} -f {datafile} {mode} -r {repetitions} {flags} 2>&1"
+        cmd = f"mpirun {opts} {executable} -f {datafile} --{mode} -r {repetitions} {flags} 2>&1"
         print(f"\t{cmd}")
         env = dict(os.environ)
         scorep_dir = f"scorep_run={run_id}_n={n}_m={m}"

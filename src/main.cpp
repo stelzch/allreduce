@@ -222,18 +222,22 @@ int main(int argc, char **argv) {
     switch(strategy_type) {
         case ALLREDUCE:
             strategy = std::make_unique<AllreduceSummation>(c_rank, summands_per_rank);
+            if(c_rank == 0)
             cout << "Strategy: Allreduce" << endl;
             break;
         case BASELINE:
             strategy = std::make_unique<BaselineSummation>(c_rank, summands_per_rank);
+            if(c_rank == 0)
             cout << "Strategy: Baseline" << endl;
             break;
         case TREE:
             strategy = std::make_unique<BinaryTreeSummation>(c_rank, summands_per_rank);
+            if(c_rank == 0)
             cout << "Strategy: Tree" << endl;
             break;
         case REPROBLAS:
             strategy = std::make_unique<ReproBLASSummation>(c_rank, summands_per_rank);
+            if(c_rank == 0)
             cout << "Strategy: ReproBLAS" << endl;
             break;
     }

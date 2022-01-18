@@ -74,6 +74,7 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--flags", default="", type=str, help="Additional flags to pass to the executable under test")
     parser.add_argument("-d", "--description", default="", type=str, help="Annotation that will be put in result DB")
     parser.add_argument("--cluster-mode", help="Detect number of nodes and processors from environment", action='store_true')
+    parser.add_argument("-r", "--repetitions", default=100, help="How many accumulation cycles to perform per benchmark")
 
     args = parser.parse_args()
     executable = args.executable
@@ -82,6 +83,7 @@ if __name__ == "__main__":
     modes = ["--tree", "--allreduce", "--reproblas"] #"--baseline", 
     flags = args.flags
     cluster_mode = args.cluster_mode
+    repetitions = args.repetitions
 
     con = sqlite3.connect('benchmarks/results.db')
     cur = con.cursor()
@@ -95,7 +97,6 @@ if __name__ == "__main__":
             (platform.node(), revision.strip(), cluster_size, args.description, flags))
     con.commit()
     run_id = cur.execute("SELECT MAX(ROWID) FROM runs").fetchall()[0][0]
-    repetitions = 100
 
 
     for datafile in datafiles:

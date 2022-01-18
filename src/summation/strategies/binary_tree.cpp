@@ -358,8 +358,8 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
         uint64_t elementsWritten = 0;
 
         for (uint64_t i = 0; i + 8 <= elementsInBuffer; i += 8) {
-            __m256d a = _mm256_load_pd(static_cast<double *>(&accumulationBuffer[i]));
-            __m256d b = _mm256_load_pd(static_cast<double *>(&accumulationBuffer[i+4]));
+            __m256d a = _mm256_loadu_pd(static_cast<double *>(&accumulationBuffer[i]));
+            __m256d b = _mm256_loadu_pd(static_cast<double *>(&accumulationBuffer[i+4]));
             __m256d level1Sum = _mm256_hadd_pd(a, b);
 
             __m128d c = _mm256_extractf128_pd(level1Sum, 1); // Fetch upper 128bit

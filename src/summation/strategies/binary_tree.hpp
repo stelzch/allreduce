@@ -97,14 +97,15 @@ protected:
             const uint64_t initialRemainingElements,
             const int y,
             const uint64_t maxX,
-            double *buffer) {
+	    double *srcBuffer,
+            double *dstBuffer) {
         uint64_t remainingElements = initialRemainingElements;
 
         for (int level = 0; level < 3; level++) {
             const int stride = 1 << (y - 1 + level);
             int elementsWritten = 0;
             for (int i = 0; (i + 1) < remainingElements; i += 2) {
-                buffer[elementsWritten++] = buffer[i] + buffer[i + 1];
+                dstBuffer[elementsWritten++] = srcBuffer[i] + srcBuffer[i + 1];
             }
 
 
@@ -112,25 +113,26 @@ protected:
                 const uint64_t bufferIndexA = remainingElements - 1;
                 const uint64_t bufferIndexB = remainingElements;
                 const uint64_t indexB = bufferStartIndex + bufferIndexB * stride;
-                const double a = buffer[bufferIndexA];
+                const double a = srcBuffer[bufferIndexA];
 
                 if (indexB > maxX) {
                     // indexB is the last element because the subtree ends there
-                    buffer[elementsWritten++] = a;
+                    dstBuffer[elementsWritten++] = a;
                 } else {
                     // indexB must be fetched from another rank
                     const double b = messageBuffer.get(rankFromIndexMap(indexB), indexB);
-                    buffer[elementsWritten++] = a + b;
+                    dstBuffer[elementsWritten++] = a + b;
                 }
 
                 remainingElements += 1;
             }
 
+	    srcBuffer = dstBuffer;
             remainingElements /= 2;
         }
         assert(remainingElements == 1);
 
-        return buffer[0];
+        return dstBuffer[0];
     }
 
 

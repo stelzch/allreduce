@@ -348,18 +348,18 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
     const uint64_t largest_local_index = min(maxX, end - 1);
     const uint64_t n_local_elements = largest_local_index + 1 - index;
 
-    memcpy(&accumulationBuffer[0], &summands[index - begin], n_local_elements * sizeof(double));
-
     uint64_t elementsInBuffer = n_local_elements;
 
+    double *sourceBuffer = static_cast<double *>(&summands[index - begin]);
+    double *destinationBuffer = static_cast<double *>(&accumulationBuffer[0]);
 
-    // Handwritten vectorization with AVX.
+
     for (int y = 1; y <= maxY; y += 3) {
         uint64_t elementsWritten = 0;
 
         for (uint64_t i = 0; i + 8 <= elementsInBuffer; i += 8) {
-            __m256d a = _mm256_loadu_pd(static_cast<double *>(&accumulationBuffer[i]));
-            __m256d b = _mm256_loadu_pd(static_cast<double *>(&accumulationBuffer[i+4]));
+            __m256d a = _mm256_loadu_pd(static_cast<double *>(&sourceBuffer[i]));
+            __m256d b = _mm256_loadu_pd(static_cast<double *>(&sourceBuffer[i+4]));
             __m256d level1Sum = _mm256_hadd_pd(a, b);
 
             __m128d c = _mm256_extractf128_pd(level1Sum, 1); // Fetch upper 128bit
@@ -368,7 +368,7 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
 
             __m128d level3Sum = _mm_hadd_pd(level2Sum, level2Sum);
 
-            accumulationBuffer[elementsWritten++] = _mm_cvtsd_f64(level3Sum);
+            destinationBuffer[elementsWritten++] = _mm_cvtsd_f64(level3Sum);
         }
 
         // number of remaining elements
@@ -381,16 +381,20 @@ double BinaryTreeSummation::accumulate(const uint64_t index) {
             const uint64_t indexOfRemainingTree = index + bufferIdx * (1UL << (y - 1));
             const double a = sum_remaining_8tree(indexOfRemainingTree,
                     remainder, y, maxX,
-                    &accumulationBuffer[0] + bufferIdx);
-            accumulationBuffer[elementsWritten++] = a;
+		    &sourceBuffer[0] + bufferIdx,
+                    &destinationBuffer[0] + bufferIdx);
+            destinationBuffer[elementsWritten++] = a;
         }
+
+	// After first iteration, read only from accumulation buffer
+	sourceBuffer = destinationBuffer;
 
         elementsInBuffer = elementsWritten;
     }
         
     assert(elementsInBuffer == 1);
 
-    return accumulationBuffer[0];
+    return destinationBuffer[0];
 }
 
 double BinaryTreeSummation::nocheckAccumulate(void) {

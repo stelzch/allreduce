@@ -11,7 +11,7 @@ FLOAT_REGEX = re.compile("^(-)?[0-9]+\.[0-9]+$")
 
 
 def run_with_mpi(number_of_ranks, datafile_path, mode):
-    cmd = f"mpirun -np {number_of_ranks} {EXECUTABLE} -f {datafile_path} {mode}"
+    cmd = f"mpirun --use-hwthread-cpus -np {number_of_ranks} {EXECUTABLE} -f {datafile_path} {mode}"
     print(f"\tRunning {cmd}")
     result = subprocess.run(
             cmd,
@@ -25,14 +25,16 @@ def run_with_mpi(number_of_ranks, datafile_path, mode):
                 + calculated_sum)
         
 
-    return float(calculated_sum)
+    return calculated_sum
 
 def check_reproducibility(datafile, mode, reproducibilityExpected):
     ranks_to_test = range(1, multiprocessing.cpu_count())
     results = [run_with_mpi(ranks, datafile, mode) for ranks in ranks_to_test]
+    allEqual = reduce(lambda a, b: a and b, [results[0] == x for x in results])
+
+    results = list(map(float, results))
     avg = np.average(results)
     maxDeviation = np.max(np.abs(results - avg))
-    allEqual = reduce(lambda a, b: a and b, [results[0] == x for x in results])
     
     if reproducibilityExpected:
         if allEqual:

@@ -3,6 +3,7 @@ import sqlite3
 import subprocess
 import glob
 import re
+import sys
 import platform
 import argparse
 
@@ -123,8 +124,11 @@ if __name__ == "__main__":
             cmd = f"mpirun {opts} {executable} -f {datafile} {mode} -r {repetitions} {flags} 2>&1"
             print(f"\t\t\t{cmd}")
             r = subprocess.run(cmd, shell=True, capture_output=True)
-            r.check_returncode()
             output = r.stdout.decode("utf-8")
+            try:
+                r.check_returncode()
+            except subprocess.CalledProcessError:
+                print(f"\t\t\t[ERROR] {output}", file=sys.stderr)
             time = grep_number("avg", output)
             stddev = grep_number("stddev", output)
             result = grep_number("sum", output)

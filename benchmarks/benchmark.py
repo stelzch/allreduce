@@ -99,6 +99,13 @@ if __name__ == "__main__":
             (platform.node(), revision.strip(), cluster_size, args.description, flags))
     con.commit()
     run_id = cur.execute("SELECT MAX(ROWID) FROM runs").fetchall()[0][0]
+    print("RUN ID: ", run_id)
+
+    if cluster_mode:
+        print("CLUSTER SIZE: ", cluster_size)
+        for key, value in os.environ.items():
+            if key.startswith('SLURM'):
+                print(f"\t{key}: {value}")
 
 
     for datafile in datafiles:

@@ -6,4 +6,5 @@ python3 benchmarks/benchmark.py --executable="build/src/RADTree" \
 	--cluster-mode \
 	--description="bwUniCluster error handling" \
 	--flags="--verbose" \
+	--repetitions="100" \
 	--cluster_size=$SLURM_NTASKS

@@ -81,6 +81,7 @@ if __name__ == "__main__":
     executable = args.executable
     datafiles = glob.glob("data/*psllh")
     cluster_size = args.cluster_size
+
     modes = ["--tree", "--allreduce", "--reproblas"] #"--baseline", 
     flags = args.flags
     cluster_mode = args.cluster_mode
@@ -116,19 +117,21 @@ if __name__ == "__main__":
         last_result = None
         for mode in modes:
             print(f"\t\tmode = {mode[2:]}")
-            opts = ""
+            cmd = ""
+            program_opts = f"-f {datafile} {mode} -r {repetitions} {flags}"
             if cluster_mode:
-                opts = "--bind-to core --map-by core -report-bindings"
+                cmd = f"srun -n {cluster_size} {executable} {program_opts}"
             else:
-                opts = f"--use-hwthread-cpus -np {cluster_size}"
-            cmd = f"mpirun {opts} {executable} -f {datafile} {mode} -r {repetitions} {flags} 2>&1"
+                mpi_opts = f"--use-hwthread-cpus -np {cluster_size}"
+                cmd = f"mpirun {mpi_opts} {executable} {program_opts} 2>&1"
             print(f"\t\t\t{cmd}")
             r = subprocess.run(cmd, shell=True, capture_output=True)
             output = r.stdout.decode("utf-8")
             try:
                 r.check_returncode()
             except subprocess.CalledProcessError:
-                print(f"\t\t\t[ERROR] {output}", file=sys.stderr)
+                indented_output = "\n".join(["\t\t\t" + line for line in output.split("\n")])
+                print(f"\t\t\t[ERROR] {indented_output}", file=sys.stderr)
             time = grep_number("avg", output)
             stddev = grep_number("stddev", output)
             result = grep_number("sum", output)

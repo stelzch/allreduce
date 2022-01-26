@@ -158,9 +158,12 @@ BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands,
       begin (startIndex[rank]),
       end (begin +  size),
       rankIntersectingSummands(calculateRankIntersectingSummands()),
+      nonResidualRanks(clusterSize - (globalSize) % clusterSize),
+      fairShare(floor(globalSize / clusterSize)),
+      splitIndex(nonResidualRanks * fairShare),
+      accumulationBuffer(size + 8),
       acquisitionDuration(std::chrono::duration<double>::zero()),
       acquisitionCount(0L),
-      accumulationBuffer(size + 8),
       messageBuffer(comm)
 {
     /* Initialize start indices map */
@@ -478,4 +481,12 @@ const double BinaryTreeSummation::accumulate_local_8subtree(const uint64_t start
 
 const void BinaryTreeSummation::printStats() const {
     messageBuffer.printStats();
+}
+
+const int BinaryTreeSummation::rankFromIndexClosedForm(const uint64_t index) const {
+    if (index < splitIndex) {
+        return floor(index / fairShare);
+    } else {
+        return nonResidualRanks + ((index - splitIndex) / (fairShare + 1));
+    }
 }

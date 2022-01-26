@@ -256,4 +256,26 @@ static void BM_rankFromIndexMap(benchmark::State& state) {
 }
 BENCHMARK(BM_rankFromIndexMap)->RangeMultiplier(2)->Range(8, 4096);
 
+static void BM_rankFromIndexClosedForm(benchmark::State& state) {
+    const size_t n = 16 * 1024 * 1024 / sizeof(double);
+    const int m = state.range(0);
+
+    vector<int> nSummands;
+    for (int i = 0; i < m; i++) {
+        nSummands.push_back(n / m);
+    }
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distrib(0, n - 1);
+
+    BinaryTreeSummation tree(0, nSummands);
+
+    for (auto _ : state) {
+        // Get random rank number
+        tree.rankFromIndexClosedForm(distrib(gen));
+    }
+}
+BENCHMARK(BM_rankFromIndexClosedForm)->RangeMultiplier(2)->Range(8, 4096);
+
 BENCHMARK_MAIN();

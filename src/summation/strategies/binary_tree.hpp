@@ -85,6 +85,8 @@ public:
 
     const void printStats(void) const;
 
+    const int rankFromIndexClosedForm(const uint64_t index) const;
+
 protected:
     const uint64_t largest_child_index(const uint64_t index) const;
     const uint64_t subtree_size(const uint64_t index) const;
@@ -140,10 +142,13 @@ protected:
 private:
     const uint64_t size,  begin, end;
     const vector<uint64_t> rankIntersectingSummands;
+    const int nonResidualRanks;
+    const uint64_t fairShare, splitIndex;
     vector<double, Util::AlignedAllocator<double>> accumulationBuffer;
     std::chrono::duration<double> acquisitionDuration;
     std::map<uint64_t, int> startIndices;
     long int acquisitionCount;
+
 
     MessageBuffer messageBuffer;
 };

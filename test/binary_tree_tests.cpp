@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 #include <vector>
 #include <cmath>
+#include <distribution.hpp>
 #include "strategies/binary_tree.hpp"
 
 using std::vector;
@@ -81,7 +82,28 @@ TEST(BinaryTreeTests, rankFromIndex) {
         EXPECT_EQ(tree.rankFromIndexMap(idx),
                 tree.rankFromIndex(idx));
     }
+}
 
+TEST(BinaryTreeTests, rankFromIndexClosedForm) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> n_distrib(1, 500);
+    std::uniform_int_distribution<> m_distrib(8, 128);
 
+    for (auto i = 0UL; i < 100; i++) {
+        auto d = Distribution::even_remainder_on_last(n_distrib(gen), m_distrib(gen));
+        vector<int> nSummands;
+        nSummands.reserve(d.ranks);
+        for (auto x : d.nSummands) nSummands.push_back(x);
 
+        BinaryTreeSummation s(0, nSummands, MPI_COMM_WORLD);
+
+        std::uniform_int_distribution<> i_distrib(0, d.n - 1);
+        for (auto j = 0UL; j < 10000; j++) {
+            auto index = i_distrib(gen);
+
+            EXPECT_EQ(s.rankFromIndexMap(index), s.rankFromIndexClosedForm(index)) << "n = " << d.n << " m = " << d.ranks << " i = " << index;
+
+        }
+    }
 }

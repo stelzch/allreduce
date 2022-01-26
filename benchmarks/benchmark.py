@@ -127,7 +127,7 @@ if __name__ == "__main__":
             cmd = ""
             program_opts = f"-f {datafile} {mode} -r {repetitions} {flags}"
             if cluster_mode:
-                cmd = f"srun -n {cluster_size} {executable} {program_opts}"
+                cmd = f"mpirun --use-hwthread-cpus --bind-to core --map-by core -report-bindings {executable} {program_opts}"
             else:
                 mpi_opts = f"--use-hwthread-cpus -np {cluster_size}"
                 cmd = f"mpirun {mpi_opts} {executable} {program_opts} 2>&1"

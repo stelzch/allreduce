@@ -165,7 +165,14 @@ int main(int argc, char **argv) {
         bool initialized = false;
         unsigned int targetClusterSize = std::min<int>(max_ranks, c_size);
         if (distrib_mode == "even" || strategy_type != TREE) {
-            d = Distribution::even_remainder_on_last(summands.size(), targetClusterSize);
+            if (summands.size() >= c_size) {
+	        d = Distribution::even_remainder_on_last(summands.size(), targetClusterSize);
+	    } else {
+		// Because we have more ranks than summands, distribute them to the first n
+		// ranks, since our calculation requires rank 0 to be assigned at least one
+		// summand.
+	        d = Distribution::even(summands.size(), targetClusterSize);
+	    }
             initialized = true;
         } else if (distrib_mode == "optimal") {
             d = Distribution::optimal(summands.size(), targetClusterSize);

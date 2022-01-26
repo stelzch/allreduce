@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <vector>
 #include <utility>
+#include <mpi.h>
 
 using std::vector;
 
@@ -15,7 +16,7 @@ public:
      * @param n_summands A vector whose length is equal to the cluster size. Each rank is assigned the number of summands
      *                   that belongs to it.
      */
-    SummationStrategy(uint64_t rank, vector<int> &n_summands);
+    SummationStrategy(uint64_t rank, vector<int> &n_summands, MPI_Comm comm = MPI_COMM_WORLD);
 
     /**
      * This will distribute the values that are to be added across the cluster. The vector is only expected to be valid
@@ -39,6 +40,7 @@ protected:
     vector<int> startIndex;
     vector<double> summands;
     const int ROOT_RANK = 0;
+    const MPI_Comm comm;
 };
 
 #endif

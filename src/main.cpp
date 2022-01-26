@@ -160,9 +160,11 @@ int main(int argc, char **argv) {
         }
         cout << "[IO] Loaded " << summands.size() << " summands from " << filename << endl;
         summands.resize(std::min<unsigned int>(summands.size(), max_summands));
+	max_ranks = std::min<int>(max_ranks, summands.size()); // the upper limit for m is user-given or n, whichever is smaller
 
         Distribution d(0,0);
         bool initialized = false;
+
         unsigned int targetClusterSize = std::min<int>(max_ranks, c_size);
         if (distrib_mode == "even" || strategy_type != TREE) {
             if (summands.size() >= c_size) {
@@ -201,11 +203,13 @@ int main(int argc, char **argv) {
         }
 
         if(initialized) {
-            // Resize to actual cluster size, fill with zeros where necessary.
-            summands_per_rank.resize(c_size);
-            for (int i = 0; i < targetClusterSize; i++)
-                summands_per_rank[i] = static_cast<int>(d.nSummands[i]);
+            summands_per_rank.resize(d.nSummands.size());
 
+	    // Static cast necessary since we reduce datatype in width
+            for (int i = 0; i < d.nSummands.size(); i++) {
+		assert(d.nSummands[i] <= std::numeric_limits<int>::max());
+                summands_per_rank[i] = static_cast<int>(d.nSummands[i]);
+	    }
         }
 
         if (verbose) {
@@ -220,30 +224,41 @@ int main(int argc, char **argv) {
     }
 
     broadcast_vector(summands_per_rank, 0);
+
+
+    bool rankHasSummands = (summands_per_rank.size() > c_rank);
+    MPI_Comm comm;
+    MPI_Comm_split(MPI_COMM_WORLD, rankHasSummands ? 0 : 1, c_rank, &comm);
+
     if (summands_per_rank.size() == 0) {
         return -1;
+    } 
+    if (!rankHasSummands) {
+	// Nothing to do for this process
+	MPI_Finalize();
+	return 0;
     }
 
     std::unique_ptr<SummationStrategy> strategy;
 
     switch(strategy_type) {
         case ALLREDUCE:
-            strategy = std::make_unique<AllreduceSummation>(c_rank, summands_per_rank);
+            strategy = std::make_unique<AllreduceSummation>(c_rank, summands_per_rank, comm);
             if(c_rank == 0)
             cout << "Strategy: Allreduce" << endl;
             break;
         case BASELINE:
-            strategy = std::make_unique<BaselineSummation>(c_rank, summands_per_rank);
+            strategy = std::make_unique<BaselineSummation>(c_rank, summands_per_rank, comm);
             if(c_rank == 0)
             cout << "Strategy: Baseline" << endl;
             break;
         case TREE:
-            strategy = std::make_unique<BinaryTreeSummation>(c_rank, summands_per_rank);
+            strategy = std::make_unique<BinaryTreeSummation>(c_rank, summands_per_rank, comm);
             if(c_rank == 0)
             cout << "Strategy: Tree" << endl;
             break;
         case REPROBLAS:
-            strategy = std::make_unique<ReproBLASSummation>(c_rank, summands_per_rank);
+            strategy = std::make_unique<ReproBLASSummation>(c_rank, summands_per_rank, comm);
             if(c_rank == 0)
             cout << "Strategy: ReproBLAS" << endl;
             break;

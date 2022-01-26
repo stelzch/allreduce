@@ -24,7 +24,7 @@ struct MessageBufferEntry {
 class MessageBuffer {
 
 public:
-    MessageBuffer();
+    MessageBuffer(MPI_Comm comm);
     const void receive(const int sourceRank);
     void flush(void);
     void wait(void);
@@ -45,11 +45,12 @@ protected:
     size_t sentMessages;
     size_t sentSummands;
     bool sendBufferClear;
+    MPI_Comm comm;
 };
 
 class BinaryTreeSummation : public SummationStrategy {
 public:
-    BinaryTreeSummation(uint64_t rank, vector<int> &n_summands);
+    BinaryTreeSummation(uint64_t rank, vector<int> &n_summands, MPI_Comm comm = MPI_COMM_WORLD);
 
     virtual ~BinaryTreeSummation();
 

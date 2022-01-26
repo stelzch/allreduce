@@ -27,12 +27,13 @@ using namespace std::string_literals;
 
 const int MESSAGEBUFFER_MPI_TAG = 1;
 
-MessageBuffer::MessageBuffer() : targetRank(-1),
+MessageBuffer::MessageBuffer(MPI_Comm comm) : targetRank(-1),
     inbox(),
     awaitedNumbers(0),
     sentMessages(0),
     sentSummands(0),
-    sendBufferClear(true)
+    sendBufferClear(true),
+    comm(comm)
     {
     outbox.reserve(MAX_MESSAGE_LENGTH + 1);
     buffer.resize(MAX_MESSAGE_LENGTH);
@@ -58,7 +59,7 @@ void MessageBuffer::flush() {
 
     assert(0 < targetRank < 128);
     MPI_Isend(static_cast<void *>(&outbox[0]), messageByteSize, MPI_BYTE, targetRank,
-            MESSAGEBUFFER_MPI_TAG, MPI_COMM_WORLD, &reqs.back());
+            MESSAGEBUFFER_MPI_TAG, comm, &reqs.back());
     sentMessages++;
 
     targetRank = -1;
@@ -71,7 +72,7 @@ const void MessageBuffer::receive(const int sourceRank) {
     MPI_Status status;
 
     MPI_Recv(static_cast<void *>(&buffer[0]), sizeof(MessageBufferEntry) * MAX_MESSAGE_LENGTH, MPI_BYTE,
-            sourceRank, MESSAGEBUFFER_MPI_TAG, MPI_COMM_WORLD, &status);
+            sourceRank, MESSAGEBUFFER_MPI_TAG, comm, &status);
     awaitedNumbers++;
 
     const int receivedEntries = status._ucount / sizeof(MessageBufferEntry);
@@ -133,13 +134,13 @@ const double MessageBuffer::get(const int sourceRank, const uint64_t index) {
 
 const void MessageBuffer::printStats() const {
     int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_rank(comm, &rank);
 
     size_t globalStats[] {0, 0, 0};
     size_t localStats[] {sentMessages, sentMessages, sentSummands};
 
     MPI_Reduce(localStats, globalStats, 3, MPI_LONG, MPI_SUM,
-            0, MPI_COMM_WORLD);
+            0, comm);
 
     if (rank == 0) {
         printf("sentMessages=%li\naverageSummandsPerMessage=%f\n",
@@ -151,15 +152,16 @@ const void MessageBuffer::printStats() const {
 }
 
 
-BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
-    : SummationStrategy(rank, n_summands),
+BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands, MPI_Comm comm)
+    : SummationStrategy(rank, n_summands, comm),
       size(n_summands[rank]),
       begin (startIndex[rank]),
       end (begin +  size),
       rankIntersectingSummands(calculateRankIntersectingSummands()),
       acquisitionDuration(std::chrono::duration<double>::zero()),
       acquisitionCount(0L),
-      accumulationBuffer(size + 8)
+      accumulationBuffer(size + 8),
+      messageBuffer(comm)
 {
     /* Initialize start indices map */
     int startIndex = 0;
@@ -170,6 +172,10 @@ BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands)
     }
     // guardian element
     startIndices[startIndex] = rankNumber;
+
+    int c_size;
+    MPI_Comm_size(comm, &c_size);
+    assert(c_size == n_summands.size());
 
 #ifdef DEBUG_OUTPUT_TREE
     printf("Rank %lu has %lu summands, starting from index %lu to %lu\n", rank, size, begin, end);
@@ -279,7 +285,7 @@ double BinaryTreeSummation::accumulate(void) {
 
     double result = (rank == ROOT_RANK) ? accumulate(0) : 0.0;
     MPI_Bcast(&result, 1, MPI_DOUBLE,
-              ROOT_RANK, MPI_COMM_WORLD);
+              ROOT_RANK, comm);
 
     return result;
 }

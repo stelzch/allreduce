@@ -8,11 +8,12 @@
 #include <numeric>
 #include <limits>
 
-SummationStrategy::SummationStrategy(uint64_t rank, vector<int> &n_summands)
+SummationStrategy::SummationStrategy(uint64_t rank, vector<int> &n_summands, MPI_Comm comm)
     : n_summands(n_summands),
       rank(rank),
       clusterSize(n_summands.size()),
-      globalSize(std::accumulate(n_summands.begin(), n_summands.end(), 0L)) {
+      globalSize(std::accumulate(n_summands.begin(), n_summands.end(), 0L)),
+      comm(comm) {
 
     assert(globalSize > 0);
 
@@ -39,8 +40,15 @@ void SummationStrategy::distribute(vector<double> &values) {
             summands[i] = values[i];
         }
     } else {
-        MPI_Scatterv(&values[0], &n_summands[0],&startIndex[0], MPI_DOUBLE,
+	int comm_size;
+	MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+
+	// Our comm size might differ from the number of summands (if n < m for example)
+	vector<int> sendCounts = n_summands;
+	vector<int> displacements = startIndex;
+
+        MPI_Scatterv(&values[0], &sendCounts[0], &displacements[0], MPI_DOUBLE,
                     &summands[0], n_summands[rank], MPI_DOUBLE,
-                    ROOT_RANK, MPI_COMM_WORLD);
+                    ROOT_RANK, comm);
     }
 }

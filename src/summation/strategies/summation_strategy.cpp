@@ -52,3 +52,7 @@ void SummationStrategy::distribute(vector<double> &values) {
                     ROOT_RANK, comm);
     }
 }
+
+const vector<double>& SummationStrategy::getSummands() {
+    return summands;
+}

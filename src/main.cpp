@@ -92,6 +92,7 @@ int main(int argc, char **argv) {
         ("c,distribution", "Number distribution, can be even, optimal or optimized,<VARIANCE>. Only relevant in tree mode", cxxopts::value<string>()->default_value("even"))
         ("n", "Use at most n numbers from the supplied data file", cxxopts::value<unsigned int>()->default_value(to_string(numeric_limits<unsigned int>::max())))
         ("m", "Use at most m ranks", cxxopts::value<int>()->default_value(to_string(numeric_limits<int>::max())))
+        ("workload", "Calculate square of all numbers in a loop with that many iterations as workload simulation", cxxopts::value<unsigned int>()->default_value("0"))
         ("v,verbose", "Be more verbose about calculations", cxxopts::value<bool>()->default_value("false"))
         ("d,debug", "Pause until debugger is attached to given rank", cxxopts::value<int>()->default_value("-1"))
         ("h,help", "Display this help message", cxxopts::value<bool>()->default_value("false"));
@@ -142,11 +143,12 @@ int main(int argc, char **argv) {
     bool verbose = result["verbose"].as<bool>();
     unsigned int max_summands = result["n"].as<unsigned int>();
     int max_ranks = result["m"].as<int>();
-
     if (max_ranks < 1) {
         cerr << "[ERROR] cluster size must be positive integer" << endl;
         return -1;
     }
+
+    int workloadIterations = result["workload"].as<unsigned int>();
 
 
 
@@ -275,7 +277,15 @@ int main(int argc, char **argv) {
     timepoints.reserve(repetitions + 1);
     timepoints.push_back(std::chrono::high_resolution_clock::now());
 
+    volatile double globalWorkloadAccumulator = 0.0; // used for fake calculations
     for (unsigned long int i = 0; i < repetitions; i++) {
+        // Simulate workload
+        for (unsigned int j = 0; j < workloadIterations; j++) {
+            for (auto x : strategy->getSummands()) {
+                globalWorkloadAccumulator += x * x;
+
+            }
+        }
         sum = strategy->accumulate();
         if (c_rank == 0) {
             timepoints.push_back(std::chrono::high_resolution_clock::now());

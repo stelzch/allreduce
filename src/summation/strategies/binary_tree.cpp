@@ -173,9 +173,13 @@ BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands,
     // guardian element
     startIndices[startIndex] = rankNumber;
 
-    int c_size;
-    MPI_Comm_size(comm, &c_size);
-    assert(c_size == n_summands.size());
+    int initialized;
+    MPI_Initialized(&initialized);
+    if (initialized) {
+        int c_size;
+        MPI_Comm_size(comm, &c_size);
+        assert(c_size == n_summands.size());
+    }
 
 #ifdef DEBUG_OUTPUT_TREE
     printf("Rank %lu has %lu summands, starting from index %lu to %lu\n", rank, size, begin, end);

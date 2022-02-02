@@ -10,7 +10,7 @@
 double AllreduceSummation::accumulate() {
     double localSum = std::accumulate(summands.begin(), summands.end(), 0.0);
     double globalSum = 0.0;
-    MPI_Allreduce(&localSum, &globalSum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&localSum, &globalSum, 1, MPI_DOUBLE, MPI_SUM, comm);
 
     return globalSum;
 }

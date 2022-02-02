@@ -41,7 +41,7 @@ void SummationStrategy::distribute(vector<double> &values) {
         }
     } else {
 	int comm_size;
-	MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+	MPI_Comm_size(comm, &comm_size);
 
 	// Our comm size might differ from the number of summands (if n < m for example)
 	vector<int> sendCounts = n_summands;

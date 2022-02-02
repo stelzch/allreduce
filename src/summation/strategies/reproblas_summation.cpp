@@ -24,13 +24,13 @@ double ReproBLASSummation::accumulate() {
     binnedBLAS_dbdsum(3, n_summands[rank], &summands[0], 1, local_isum);
 
     MPI_Reduce(local_isum, isum, 1, binnedMPI_DOUBLE_BINNED(3),
-            binnedMPI_DBDBADD(3), 0, MPI_COMM_WORLD);
+            binnedMPI_DBDBADD(3), 0, comm);
 
     double sum;
     if (rank == 0) {
         sum = binned_ddbconv(3, isum);
     }
 
-    MPI_Bcast(&sum, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&sum, 1, MPI_DOUBLE, 0, comm);
     return sum;
 }

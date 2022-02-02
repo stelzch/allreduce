@@ -31,7 +31,7 @@ if __name__ == '__main__':
     parser.add_argument("--min", type=int, default=1, help="Minimum number of ranks")
     parser.add_argument("--max", type=int, default=os.cpu_count(), help="Maximum number of ranks")
     parser.add_argument("--scorep", action="store_true", help="Collect ScoreP metrics")
-    parser.add_argument("--mode", type=str, help="computation mode", default="tree")
+    parser.add_argument("--modes", type=str, help="computation modes", default="tree")
 
     args = parser.parse_args()
     executable = args.executable
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     strong = args.strong
     n_cutoff = args.n
     scorep = args.scorep
-    mode = args.mode
+    modes = args.modes.split(",")
 
 
     if not os.path.exists(datafile):
@@ -84,44 +84,45 @@ if __name__ == '__main__':
     elif m_min == 1:
         ms[0] = 1
 
-    for m in ms:
-        n = int(min(n_datafile, n_cutoff))
-        if weak:
-            n = m * int(n / max(ms))
-        print(f"n={n}, m={m}")
+    for mode in modes:
+        for m in ms:
+            n = int(min(n_datafile, n_cutoff))
+            if weak:
+                n = m * int(n / max(ms))
+            print(f"n={n}, m={m}")
 
-        opts = f"--use-hwthread-cpus -np {m}"
-        repetitions = "100"
-        flags = f"-n {n}"
-        cmd = f"mpirun {opts} {executable} -f {datafile} --{mode} -r {repetitions} {flags} 2>&1"
-        print(f"\t{cmd}")
-        env = dict(os.environ)
-        scorep_dir = f"scorep_run={run_id}_n={n}_m={m}"
-        env["SCOREP_EXPERIMENT_DIRECTORY"] = scorep_dir
-        r = subprocess.run(cmd, env=env, shell=True, capture_output=True)
-        r.check_returncode()
-        output = r.stdout.decode("utf-8")
-        time = grep_number("avg", output)
-        stddev = grep_number("stddev", output)
-        sentMessages = grep_number("sentMessages", output)
-        avgSummandsPerMessage = grep_number("averageSummandsPerMessage", output)
-        
-        cur.execute('INSERT INTO results(run_id, datafile, n_summands, repetitions, mode, time_ns, stddev, output, ranks)' \
-                'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                (run_id, datafile, n, repetitions, mode[2:], time, stddev, output, m))
-        con.commit()
+            opts = f"--use-hwthread-cpus -np {m}"
+            repetitions = "100"
+            flags = f"-n {n}"
+            cmd = f"mpirun {opts} {executable} -f {datafile} --{mode} -r {repetitions} {flags} 2>&1"
+            print(f"\t{cmd}")
+            env = dict(os.environ)
+            scorep_dir = f"scorep_run={run_id}_n={n}_m={m}"
+            env["SCOREP_EXPERIMENT_DIRECTORY"] = scorep_dir
+            r = subprocess.run(cmd, env=env, shell=True, capture_output=True)
+            r.check_returncode()
+            output = r.stdout.decode("utf-8")
+            time = grep_number("avg", output)
+            stddev = grep_number("stddev", output)
+            sentMessages = grep_number("sentMessages", output)
+            avgSummandsPerMessage = grep_number("averageSummandsPerMessage", output)
 
-        result_id = cur.execute("SELECT MAX(id) FROM results").fetchall()[0][0]
-        cur.execute('INSERT INTO messages(result_id, messages_sent, avg_summands_per_message) VALUES(?, ?, ?)',
-                (result_id, sentMessages, avgSummandsPerMessage))
-        con.commit()
+            cur.execute('INSERT INTO results(run_id, datafile, n_summands, repetitions, mode, time_ns, stddev, output, ranks)' \
+                    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    (run_id, datafile, n, repetitions, mode, time, stddev, output, m))
+            con.commit()
+
+            result_id = cur.execute("SELECT MAX(id) FROM results").fetchall()[0][0]
+            cur.execute('INSERT INTO messages(result_id, messages_sent, avg_summands_per_message) VALUES(?, ?, ?)',
+                    (result_id, sentMessages, avgSummandsPerMessage))
+            con.commit()
 
 
-        if scorep:
-            # Write files to archive
-            for f in glob.glob(scorep_dir + '/*'):
-                archive.write(f)
-            shutil.rmtree("./" + scorep_dir)
+            if scorep:
+                # Write files to archive
+                for f in glob.glob(scorep_dir + '/*'):
+                    archive.write(f)
+                shutil.rmtree("./" + scorep_dir)
 
 
     if scorep:

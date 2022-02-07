@@ -56,3 +56,7 @@ void SummationStrategy::distribute(vector<double> &values) {
 const vector<double>& SummationStrategy::getSummands() {
     return summands;
 }
+
+void SummationStrategy::setSummands(const vector<double>& summands) {
+    this->summands = summands;
+}

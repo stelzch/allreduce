@@ -286,7 +286,11 @@ int main(int argc, char **argv) {
 
             }
         }
-        sum = strategy->accumulate();
+        if (strategy_type == TREE) {
+            sum = BinaryTreeSummation::global_sum(strategy->getSummands(), comm);
+        } else {
+            sum = strategy->accumulate();
+        }
         if (c_rank == 0) {
             timepoints.push_back(std::chrono::high_resolution_clock::now());
         }

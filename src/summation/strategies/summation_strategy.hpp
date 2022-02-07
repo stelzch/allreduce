@@ -26,6 +26,7 @@ public:
     void distribute(vector<double> &values);
 
     const vector<double>& getSummands();
+    void setSummands(const vector<double>& summands);
 
 
     virtual double accumulate() = 0;

@@ -156,12 +156,11 @@ BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands,
     : SummationStrategy(rank, n_summands, comm),
       size(n_summands[rank]),
       begin (startIndex[rank]),
-      end (begin +  size),
+      end (begin + size),
       rankIntersectingSummands(calculateRankIntersectingSummands()),
       nonResidualRanks(clusterSize - (globalSize) % clusterSize),
       fairShare(floor(globalSize / clusterSize)),
       splitIndex(nonResidualRanks * fairShare),
-      accumulationBuffer(size + 8),
       acquisitionDuration(std::chrono::duration<double>::zero()),
       acquisitionCount(0L),
       messageBuffer(comm)
@@ -175,6 +174,10 @@ BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands,
     }
     // guardian element
     startIndices[startIndex] = rankNumber;
+
+    if (accumulationBuffer.size() < (size  - 8)) {
+        accumulationBuffer.resize(size);
+    }
 
     int initialized;
     MPI_Initialized(&initialized);
@@ -192,6 +195,9 @@ BinaryTreeSummation::BinaryTreeSummation(uint64_t rank, vector<int> &n_summands,
     printf("\n");
 #endif
 }
+
+// Initialize accumulation buffer
+vector<double, Util::AlignedAllocator<double>> BinaryTreeSummation::accumulationBuffer(1024);
 
 BinaryTreeSummation::~BinaryTreeSummation() {
 #ifdef ENABLE_INSTRUMENTATION
@@ -489,4 +495,26 @@ const int BinaryTreeSummation::rankFromIndexClosedForm(const uint64_t index) con
     } else {
         return nonResidualRanks + ((index - splitIndex) / (fairShare + 1));
     }
+}
+
+double BinaryTreeSummation::global_sum(const vector<double> &data, MPI_Comm comm) {
+
+    int rank, commSize;
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &commSize);
+
+    vector<int> n_summands(commSize);
+
+    int localSize = data.size();
+
+    /* Determine the number of summands for each rank, which is necessary to properly calculate rank numbers from indices
+     */
+    MPI_Allgather(&localSize, 1, MPI_INT,
+            &n_summands[0], 1, MPI_INT,
+            comm);
+
+    BinaryTreeSummation strategy(rank, n_summands, comm);
+    strategy.setSummands(data);
+
+    return strategy.accumulate();
 }

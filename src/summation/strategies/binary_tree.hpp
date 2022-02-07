@@ -62,6 +62,9 @@ public:
     uint64_t rankFromIndex(uint64_t index) const;
     uint64_t rankFromIndexMap(const uint64_t index) const;
 
+    static double global_sum(const vector<double> &data,
+            MPI_Comm comm = MPI_COMM_WORLD);
+
     const double acquireNumber(const uint64_t index);
 
 
@@ -144,7 +147,7 @@ private:
     const vector<uint64_t> rankIntersectingSummands;
     const int nonResidualRanks;
     const uint64_t fairShare, splitIndex;
-    vector<double, Util::AlignedAllocator<double>> accumulationBuffer;
+    static vector<double, Util::AlignedAllocator<double>> accumulationBuffer;
     std::chrono::duration<double> acquisitionDuration;
     std::map<uint64_t, int> startIndices;
     long int acquisitionCount;

@@ -62,7 +62,7 @@ public:
     uint64_t rankFromIndex(uint64_t index) const;
     uint64_t rankFromIndexMap(const uint64_t index) const;
 
-    static double global_sum(const vector<double> &data,
+    static double global_sum(const double *data, const size_t dataLength,
             MPI_Comm comm = MPI_COMM_WORLD);
 
     const double acquireNumber(const uint64_t index);

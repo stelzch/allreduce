@@ -287,7 +287,7 @@ int main(int argc, char **argv) {
             }
         }
         if (strategy_type == TREE) {
-            sum = BinaryTreeSummation::global_sum(strategy->getSummands(), comm);
+            sum = BinaryTreeSummation::global_sum(&strategy->getSummands()[0], strategy->getSummands().size(), comm);
         } else {
             sum = strategy->accumulate();
         }

@@ -29,6 +29,7 @@ add_library(Summation strategies/summation_strategy.cpp
                         io.cpp
                         util.cpp
                         distribution.cpp
+                        tree_sum.cpp
 )
 if(ENABLE_INSTRUMENTATION)
     add_definitions(-DENABLE_INSTRUMENTATION)

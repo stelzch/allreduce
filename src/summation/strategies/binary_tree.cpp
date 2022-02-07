@@ -497,7 +497,7 @@ const int BinaryTreeSummation::rankFromIndexClosedForm(const uint64_t index) con
     }
 }
 
-double BinaryTreeSummation::global_sum(const vector<double> &data, MPI_Comm comm) {
+double BinaryTreeSummation::global_sum(const double *data, const size_t dataLength, MPI_Comm comm) {
 
     int rank, commSize;
     MPI_Comm_rank(comm, &rank);
@@ -505,7 +505,7 @@ double BinaryTreeSummation::global_sum(const vector<double> &data, MPI_Comm comm
 
     vector<int> n_summands(commSize);
 
-    int localSize = data.size();
+    int localSize = dataLength;
 
     /* Determine the number of summands for each rank, which is necessary to properly calculate rank numbers from indices
      */
@@ -514,7 +514,9 @@ double BinaryTreeSummation::global_sum(const vector<double> &data, MPI_Comm comm
             comm);
 
     BinaryTreeSummation strategy(rank, n_summands, comm);
-    strategy.setSummands(data);
+
+    const vector<double> summands(data, data + dataLength);
+    strategy.setSummands(summands);
 
     return strategy.accumulate();
 }

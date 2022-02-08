@@ -3,7 +3,13 @@
 
 #include <mpi.h>
 
+#ifdef __cplusplus 
+#define EXTERN extern "C"
+#else
+#define EXTERN
+#endif
 
-extern "C" double tree_sum(double *sendBuffer, size_t sendBufferLength, MPI_Comm comm);
+
+EXTERN double tree_sum(double *sendBuffer, size_t sendBufferLength, MPI_Comm comm);
 
 #endif

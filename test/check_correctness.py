@@ -43,20 +43,23 @@ def retrieve_calculated_sums(cur, run_id, mode = 'tree'):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Check database benchmark runs against reference values')
     parser.add_argument('run_id', type=int, help='Run ID to check for errors')
+    parser.add_argument('--check-result-count', help='Check whether benchmark results have been recorded for all three modes and all datasets', action='store_true')
 
     args = parser.parse_args()
 
     run_id = args.run_id
+    check_result_count = args.check_result_count
 
     reference_values = load_reference_values()
     con = sqlite3.connect('file:benchmarks/results.db?mode=ro', uri=True)
     cur = con.cursor()
 
-    cur.execute("SELECT mode,COUNT(*) FROM results WHERE run_id = ? GROUP BY mode ORDER BY mode ASC", (run_id,))
-    result_counts = cur.fetchall()
-    assert(result_counts[0] == ('allreduce', DATASET_COUNT))
-    assert(result_counts[1] == ('reproblas', DATASET_COUNT))
-    assert(result_counts[2] == ('tree', DATASET_COUNT))
+    if check_result_count:
+        cur.execute("SELECT mode,COUNT(*) FROM results WHERE run_id = ? GROUP BY mode ORDER BY mode ASC", (run_id,))
+        result_counts = cur.fetchall()
+        assert(result_counts[0] == ('allreduce', DATASET_COUNT))
+        assert(result_counts[1] == ('reproblas', DATASET_COUNT))
+        assert(result_counts[2] == ('tree', DATASET_COUNT))
 
     checked = 0
     errors = 0

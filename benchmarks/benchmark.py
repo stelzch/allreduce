@@ -49,6 +49,26 @@ def init_db(cur):
         FOREIGN KEY (result_id) REFERENCES results ON DELETE CASCADE
     );
     """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS microbenchmark_runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        hostname TEXT,
+        revision TEXT,
+        uname TEXT,
+        date TEXT,
+        repetitions INTEGER
+    );
+    """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS microbenchmark_results (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id INTEGER,
+        benchmark TEXT,
+        time REAL,
+        FOREIGN KEY(run_id) REFERENCES microbenchmark_runs ON DELETE CASCADE
+    );
+    """)
+
 
 def grep_number(name, string):
     regexp = f"^{name}=([+\-0-9.e]+)$"

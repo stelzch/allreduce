@@ -28,8 +28,23 @@ using namespace std;
 
 int c_rank = -1, c_size = -1;
 
+union floatingpoint_number {
+    double number;
+    unsigned char bytes[sizeof(double)];
+};
+
+
 void output_result(double sum) {
+    floatingpoint_number n;
+    n.number = sum;
     printf("sum=%.64f\n", sum);
+
+    printf("sumBytes=");
+    for (int i = 0; i < sizeof(double); i++) {
+        const unsigned int val = n.bytes[sizeof(double) - i - 1];
+        printf("%02X", val);
+    }
+    printf("\n");
 }
 
 template<typename T> void broadcast_vector(vector<T> &src, int root) {

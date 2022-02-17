@@ -297,7 +297,7 @@ int main(int argc, char **argv) {
         // Simulate workload
         for (unsigned int j = 0; j < workloadIterations; j++) {
             for (auto x : strategy->getSummands()) {
-                globalWorkloadAccumulator += x * x;
+                globalWorkloadAccumulator = globalWorkloadAccumulator + x * x;
 
             }
         }

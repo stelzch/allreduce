@@ -29,7 +29,6 @@ if __name__ == '__main__':
     cur.execute('SELECT MAX(id) FROM microbenchmark_runs')
     run_id = cur.fetchone()[0]
 
-    print(r.stdout)
     reader = csv.reader(io.StringIO(output))
     next(reader) # skip header
     for name,iterations,real_time,cpu_time,time_unit,_,_,_,_,_ in reader:

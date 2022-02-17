@@ -51,6 +51,7 @@ if __name__ == '__main__':
     cur = con.cursor()
 
     checked = 0
+    errors = 0
     for result_id, dataset, actualSum, sumBytes in retrieve_calculated_sums(cur, run_id):
         checked += 1
         if None in (actualSum, ):
@@ -63,10 +64,15 @@ if __name__ == '__main__':
         ref = hex2float(reference_values[dataset])
 
         if ref != actualSum:
+            errors += 1
             print(f"Mismatch for result id {result_id}, dataset {dataset}, expected {ref} but got {actualSum}",
                     file=sys.stderr)
+        if sumBytes is None:
+            print(f"[WARN] No byte representation of sum for result id {result_id}, dataset {dataset}")
         if sumBytes is not None and sumBytes != reference_values[dataset]:
             print(f"Bytewise mismatch for result id {result_id}, dataset {dataset}, expected {reference_values[dataset]} but got {sumBytes}")
     print(f"[INFO] Checked {checked} results")
+
+    sys.exit(errors)
 
 

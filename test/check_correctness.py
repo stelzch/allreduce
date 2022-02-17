@@ -6,6 +6,8 @@ import csv
 import binascii
 import struct
 
+DATASET_COUNT = 10
+
 def hex2float(s):
     value, = struct.unpack('>d', binascii.unhexlify(s))
     return value
@@ -49,6 +51,12 @@ if __name__ == '__main__':
     reference_values = load_reference_values()
     con = sqlite3.connect('file:benchmarks/results.db?mode=ro', uri=True)
     cur = con.cursor()
+
+    cur.execute("SELECT mode,COUNT(*) FROM results WHERE run_id = ? GROUP BY mode ORDER BY mode ASC", (run_id,))
+    result_counts = cur.fetchall()
+    assert(result_counts[0] == ('allreduce', DATASET_COUNT))
+    assert(result_counts[1] == ('reproblas', DATASET_COUNT))
+    assert(result_counts[2] == ('tree', DATASET_COUNT))
 
     checked = 0
     errors = 0

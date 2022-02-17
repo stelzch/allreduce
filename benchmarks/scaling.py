@@ -32,6 +32,7 @@ if __name__ == '__main__':
     parser.add_argument("--max", type=int, default=os.cpu_count(), help="Maximum number of ranks")
     parser.add_argument("--scorep", action="store_true", help="Collect ScoreP metrics")
     parser.add_argument("--modes", type=str, help="computation modes", default="tree")
+    parser.add_argument("--cluster-mode", help="For use on cluster with SLURM workload manager", action='store_true')
 
     args = parser.parse_args()
     executable = args.executable
@@ -44,6 +45,7 @@ if __name__ == '__main__':
     n_cutoff = args.n
     scorep = args.scorep
     modes = args.modes.split(",")
+    cluster_mode = args.cluster_mode
 
 
     if not os.path.exists(datafile):
@@ -91,7 +93,8 @@ if __name__ == '__main__':
                 n = m * int(n / max(ms))
             print(f"n={n}, m={m}")
 
-            opts = f"--use-hwthread-cpus -np {m}"
+            cluster_opts = "--bind-to core --map-by core -report-bindings" if cluster_mode else ""
+            opts = f"--use-hwthread-cpus -np {m} {cluster_opts}"
             repetitions = "100"
             flags = f"-n {n}"
             cmd = f"mpirun {opts} {executable} -f {datafile} --{mode} -r {repetitions} {flags} 2>&1"

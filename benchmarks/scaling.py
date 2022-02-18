@@ -70,6 +70,11 @@ if __name__ == '__main__':
     git_result = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True)
     revision = str(git_result.stdout, 'utf-8') if git_result.returncode == 0 else "NONE"
 
+    if cluster_mode:
+        for key, value in os.environ.items():
+            if key.startswith('SLURM'):
+                print(f"\t{key}: {value}")
+
     cur.execute("INSERT INTO runs(date, hostname, revision, cluster_size, description, flags) VALUES (datetime(), ?, ?, ?, ?, ?)",
             (platform.node(), revision.strip(), os.cpu_count(), description, ""))
     con.commit()

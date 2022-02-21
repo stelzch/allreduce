@@ -26,6 +26,7 @@ add_library(Summation strategies/summation_strategy.cpp
                         strategies/allreduce_summation.cpp
                         strategies/baseline_summation.cpp
                         strategies/reproblas_summation.cpp
+                        strategies/kahan_summation.cpp
                         io.cpp
                         util.cpp
                         distribution.cpp

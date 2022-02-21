@@ -18,21 +18,28 @@ def run_with_mpi(number_of_ranks, datafile_path, mode):
             capture_output=True,
             shell=True
     )
-    calculated_sum = next(filter(lambda l: l.startswith('sum='), result.stdout.decode('utf-8').split('\n')))[4:]
+    output = result.stdout.decode('utf-8')
+    calculated_sum_match = re.search("^sum=(.+)$", output, flags=re.MULTILINE)
+    sum_bytes_match = re.search("^sumBytes=(.+)$", output, flags=re.MULTILINE)
 
-    if not FLOAT_REGEX.match(calculated_sum):
-        raise Exception("Program did not return sum as last line as expected, last line was:\n"
-                + calculated_sum)
+    if not FLOAT_REGEX.match(calculated_sum_match.group(1)):
+        raise Exception("Program did not return sum as last line as expected")
+    
         
+    if None in (calculated_sum_match, sum_bytes_match):
+        raise Exception("Unable to find sum in program output")
 
-    return calculated_sum
+    calculated_sum = float(calculated_sum_match.group(1))
+    sum_bytes = sum_bytes_match.group(1)
+
+    return calculated_sum, sum_bytes
 
 def check_reproducibility(datafile, mode, reproducibilityExpected):
     ranks_to_test = range(1, multiprocessing.cpu_count())
     results = [run_with_mpi(ranks, datafile, mode) for ranks in ranks_to_test]
-    allEqual = reduce(lambda a, b: a and b, [results[0] == x for x in results])
+    allEqual = reduce(lambda a, b: a and b, [results[0][1] == x[1] for x in results]) # compare sum bytes
 
-    results = list(map(float, results))
+    results = list(map(lambda x: x[0], results))
     avg = np.average(results)
     maxDeviation = np.max(np.abs(results - avg))
     
@@ -60,5 +67,5 @@ if __name__ == "__main__":
             retcode = -1
         #if not check_reproducibility(datafile, "--reproblas", True):
         #    retcode = -1
-        #check_reproducibility(datafile, "--allreduce", False)
+        check_reproducibility(datafile, "--kahan", False)
     sys.exit(retcode)

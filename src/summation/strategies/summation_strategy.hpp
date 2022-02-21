@@ -23,7 +23,7 @@ public:
      * on the root rank
      * @param values The data that is to be summed up.
      */
-    void distribute(vector<double> &values);
+    virtual void distribute(vector<double> &values);
 
     const vector<double>& getSummands();
     void setSummands(const vector<double>& summands);

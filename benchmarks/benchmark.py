@@ -102,7 +102,7 @@ if __name__ == "__main__":
     datafiles = glob.glob("data/*psllh")
     cluster_size = args.cluster_size
 
-    modes = ["--tree", "--allreduce", "--reproblas", "--kahan"] #"--baseline", 
+    modes = ["--tree", "--allreduce", "--reproblas"] #, "--kahan"] #"--baseline", 
     flags = args.flags
     cluster_mode = args.cluster_mode
     repetitions = args.repetitions

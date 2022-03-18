@@ -283,7 +283,7 @@ vector<uint64_t> BinaryTreeSummation::calculateRankIntersectingSummands(void) co
     */
 double BinaryTreeSummation::accumulate(void) {
     for (auto summand : rankIntersectingSummands) {
-        if (subtree_size(summand) > 32) {
+        if (subtree_size(summand) > 64) {
             // If we are about to do some considerable amount of work, make sure
             // the send buffer is empty so noone is waiting for our results
             messageBuffer.flush();

@@ -65,6 +65,8 @@ def init_db(cur):
         run_id INTEGER,
         benchmark TEXT,
         time REAL,
+        stddev REAL,
+        repetitions INT,
         FOREIGN KEY(run_id) REFERENCES microbenchmark_runs ON DELETE CASCADE
     );
     """)

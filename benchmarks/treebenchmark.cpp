@@ -22,7 +22,7 @@ static void BM_parent(benchmark::State& state) {
         auto x = tree.parent(state.range(0));
     }
 }
-BENCHMARK(BM_parent)->Arg(2)->Arg(8)->Arg(20);
+BENCHMARK(BM_parent)->Arg(2)->Arg(8)->Arg(20)->Iterations(1);
 
 static void BM_rankIntersectingSummands(benchmark::State& state) {
     const auto n = 21410970; // Tarv D7
@@ -41,7 +41,7 @@ static void BM_rankIntersectingSummands(benchmark::State& state) {
     }
 
 }
-BENCHMARK(BM_rankIntersectingSummands)->Arg(0)->Arg(121)->Arg(9)->Arg(255);
+BENCHMARK(BM_rankIntersectingSummands)->Arg(0)->Arg(121)->Arg(9)->Arg(255)->Iterations(1);
 
 static void BM_summation(benchmark::State& state) {
     volatile double a = 0.0;
@@ -50,7 +50,7 @@ static void BM_summation(benchmark::State& state) {
     }
 
 }
-BENCHMARK(BM_summation);
+BENCHMARK(BM_summation)->Iterations(1);
 
 static void BM_chrono(benchmark::State& state) {
     using ns = std::chrono::nanoseconds;
@@ -63,7 +63,7 @@ static void BM_chrono(benchmark::State& state) {
 
     }
 }
-BENCHMARK(BM_chrono);
+BENCHMARK(BM_chrono)->Iterations(1);
 
 static void BM_iterative(benchmark::State& state) {
     const int n = state.range(0);
@@ -81,7 +81,7 @@ static void BM_iterative(benchmark::State& state) {
        tree.accumulate(0); 
     }
 }
-BENCHMARK(BM_iterative)->RangeMultiplier(8)->Range(1, 1 << 27);
+BENCHMARK(BM_iterative)->RangeMultiplier(8)->Range(1, 1 << 27)->Iterations(1);
 
 static void BM_noCheckIterative(benchmark::State& state) {
     const int n = state.range(0);
@@ -99,7 +99,7 @@ static void BM_noCheckIterative(benchmark::State& state) {
        volatile double a = tree.nocheckAccumulate(); 
     }
 }
-BENCHMARK(BM_noCheckIterative)->RangeMultiplier(8)->Range(1, 1 << 27);
+BENCHMARK(BM_noCheckIterative)->RangeMultiplier(8)->Range(1, 1 << 27)->Iterations(1);
 
 static void BM_recursive(benchmark::State& state) {
     const int n = state.range(0);
@@ -118,7 +118,7 @@ static void BM_recursive(benchmark::State& state) {
        tree.recursiveAccumulate(0); 
     }
 }
-BENCHMARK(BM_recursive)->RangeMultiplier(8)->Range(1, 1 << 27);
+BENCHMARK(BM_recursive)->RangeMultiplier(8)->Range(1, 1 << 27)->Iterations(1);
 
 static void BM_accumulative(benchmark::State& state) {
     const int n = state.range(0);
@@ -132,7 +132,7 @@ static void BM_accumulative(benchmark::State& state) {
         volatile double result = std::accumulate(data.begin(), data.end(), 0.0);
     }
 }
-BENCHMARK(BM_accumulative)->RangeMultiplier(8)->Range(1, 1 << 27);
+BENCHMARK(BM_accumulative)->RangeMultiplier(8)->Range(1, 1 << 27)->Iterations(1);
 
 
 __attribute__((optimize("O3"))) static void BM_avxsubtree8(benchmark::State& state) {
@@ -165,7 +165,7 @@ __attribute__((optimize("O3"))) static void BM_avxsubtree8(benchmark::State& sta
     }
 
 }
-BENCHMARK(BM_avxsubtree8);
+BENCHMARK(BM_avxsubtree8)->Iterations(1);
 
 __attribute__((optimize("O3"))) static void BM_subtree8(benchmark::State& state) {
     const size_t n = 1 * 256 * 1024 * 1024 / sizeof(double);
@@ -209,7 +209,7 @@ __attribute__((optimize("O3"))) static void BM_subtree8(benchmark::State& state)
     }
 
 }
-BENCHMARK(BM_subtree8);
+BENCHMARK(BM_subtree8)->Iterations(1);
 
 static void BM_rankFromIndex(benchmark::State& state) {
     const size_t n = 16 * 1024 * 1024 / sizeof(double);
@@ -231,7 +231,7 @@ static void BM_rankFromIndex(benchmark::State& state) {
         tree.rankFromIndex(distrib(gen));
     }
 }
-BENCHMARK(BM_rankFromIndex)->RangeMultiplier(2)->Range(8, 4096);
+BENCHMARK(BM_rankFromIndex)->RangeMultiplier(2)->Range(8, 4096)->Iterations(1);
 
 
 static void BM_rankFromIndexMap(benchmark::State& state) {
@@ -254,7 +254,7 @@ static void BM_rankFromIndexMap(benchmark::State& state) {
         tree.rankFromIndexMap(distrib(gen));
     }
 }
-BENCHMARK(BM_rankFromIndexMap)->RangeMultiplier(2)->Range(8, 4096);
+BENCHMARK(BM_rankFromIndexMap)->RangeMultiplier(2)->Range(8, 4096)->Iterations(1);
 
 static void BM_rankFromIndexClosedForm(benchmark::State& state) {
     const size_t n = 16 * 1024 * 1024 / sizeof(double);
@@ -276,6 +276,6 @@ static void BM_rankFromIndexClosedForm(benchmark::State& state) {
         tree.rankFromIndexClosedForm(distrib(gen));
     }
 }
-BENCHMARK(BM_rankFromIndexClosedForm)->RangeMultiplier(2)->Range(8, 4096);
+BENCHMARK(BM_rankFromIndexClosedForm)->RangeMultiplier(2)->Range(8, 4096)->Iterations(1);
 
 BENCHMARK_MAIN();

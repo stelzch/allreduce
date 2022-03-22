@@ -102,8 +102,7 @@ void MessageBuffer::put(const int targetRank, const uint64_t index, const double
     e.value = value;
     outbox.push_back(e);
 
-    flush();
-    //if (outbox.size() == MAX_MESSAGE_LENGTH) flush();
+    if (outbox.size() == MAX_MESSAGE_LENGTH) flush();
 
     sentSummands++;
 }
